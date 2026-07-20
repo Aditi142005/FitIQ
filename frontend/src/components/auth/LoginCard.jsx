@@ -1,10 +1,27 @@
 import { Link } from "react-router-dom";
-
+import { motion } from "framer-motion";
+import Input from "../common/Input";
+import Button from "../common/Button";
 function LoginCard() {
   return (
-    <div className="w-full max-w-md bg-white rounded-2xl shadow-card p-8">
+    <motion.div
+  initial={{ opacity: 0, x: 50 }}
+  animate={{ opacity: 1, x: 0 }}
+  transition={{ duration: 0.6 }}
+ className="
+w-full 
+max-w-md 
+bg-white/80 
+backdrop-blur-lg
+rounded-3xl 
+shadow-card 
+p-10
+border
+border-white/40
+"
+>
       <h1 className="text-3xl font-heading font-bold text-textPrimary mb-2">
-        Welcome Back
+         Welcome to FitIQ 🧡
       </h1>
 
       <p className="text-textSecondary mb-8">
@@ -13,29 +30,17 @@ function LoginCard() {
 
       <form className="space-y-5">
 
-        <div>
-          <label className="block mb-2 font-medium">
-            Email Address
-          </label>
+       <Input
+  label="Email Address"
+  type="email"
+  placeholder="Enter your email"
+/>
 
-          <input
-            type="email"
-            placeholder="Enter your email"
-            className="w-full border rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-
-        <div>
-          <label className="block mb-2 font-medium">
-            Password
-          </label>
-
-          <input
-            type="password"
-            placeholder="Enter your password"
-            className="w-full border rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
+        <Input
+  label="Password"
+  type="password"
+  placeholder="Enter your password"
+/>
 
         <div className="flex justify-between items-center text-sm">
 
@@ -56,11 +61,9 @@ function LoginCard() {
 
         </div>
 
-        <button
-          className="w-full bg-primary hover:bg-orange-700 text-white rounded-xl py-3 font-semibold transition"
-        >
-          Continue
-        </button>
+       <Button>
+             Continue
+       </Button>
 
       </form>
 
@@ -77,7 +80,7 @@ function LoginCard() {
 
       </p>
 
-    </div>
+   </motion.div>
   );
 }
 

@@ -1,5 +1,12 @@
+import AuthLayout from "../components/layout/AuthLayout";
+import SignupCard from "../components/auth/SignupCard";
+
 function Signup() {
-  return <h1>Signup Page</h1>;
+  return (
+    <AuthLayout>
+      <SignupCard />
+    </AuthLayout>
+  );
 }
 
 export default Signup;
