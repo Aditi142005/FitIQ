@@ -2,12 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyALSfIRWOUuQ0Ln9bscJYjbZJ_iefhTPRs",
-  authDomain: "fitiq-88401.firebaseapp.com",
-  projectId: "fitiq-88401",
-  storageBucket: "fitiq-88401.firebasestorage.app",
-  messagingSenderId: "972052388645",
-  appId: "1:972052388645:web:b0bfca0a819592c78018cc"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
