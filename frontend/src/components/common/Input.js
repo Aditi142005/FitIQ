@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-function Input({ label, type, placeholder }) {
+function Input({ label, type, placeholder, value, onChange}) {
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -22,6 +22,8 @@ function Input({ label, type, placeholder }) {
               : type
           }
           placeholder={placeholder}
+          value={value}
+onChange={onChange}
           className="w-full border rounded-xl p-3 pr-12 focus:outline-none focus:ring-2 focus:ring-primary [&::-ms-reveal]:hidden"
         />
 

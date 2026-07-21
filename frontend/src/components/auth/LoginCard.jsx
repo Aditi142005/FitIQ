@@ -1,8 +1,29 @@
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { login } from "../../services/authService";
 import { motion } from "framer-motion";
 import Input from "../common/Input";
 import Button from "../common/Button";
 function LoginCard() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const handleLogin = async (e) => {
+  e.preventDefault();
+
+  try {
+
+    await login(email, password);
+
+    navigate("/dashboard");
+
+  } catch (error) {
+
+    alert(error.message);
+
+  }
+};
   return (
     <motion.div
   initial={{ opacity: 0, x: 50 }}
@@ -28,18 +49,25 @@ border-white/40
         Sign in to continue your fitness journey.
       </p>
 
-      <form className="space-y-5">
+      <form 
+  className="space-y-5"
+  onSubmit={handleLogin}
+>
 
-       <Input
+      <Input
   label="Email Address"
   type="email"
   placeholder="Enter your email"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
 />
 
-        <Input
+      <Input
   label="Password"
   type="password"
   placeholder="Enter your password"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
 />
 
         <div className="flex justify-between items-center text-sm">
