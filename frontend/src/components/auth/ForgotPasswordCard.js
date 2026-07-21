@@ -1,9 +1,23 @@
 import { Link } from "react-router-dom";
-
+import { useState } from "react";
+import { resetPassword } from "../../services/authService";
 import Input from "../common/Input";
 import Button from "../common/Button";
 
 function ForgotPasswordCard() {
+  const [email, setEmail] = useState("");
+  const handleReset = async (e) => {
+  e.preventDefault();
+
+  try {
+    await resetPassword(email);
+
+    alert("Password reset email sent 📧");
+
+  } catch (error) {
+    alert(error.message);
+  }
+};
   return (
     <div className="w-full max-w-md bg-white rounded-2xl shadow-card p-8">
 
@@ -15,13 +29,18 @@ function ForgotPasswordCard() {
         Enter your email and we'll send you a password reset link.
       </p>
 
-      <form className="space-y-5">
+      <form 
+  className="space-y-5"
+  onSubmit={handleReset}
+>
 
-        <Input
-          label="Email Address"
-          type="email"
-          placeholder="Enter your email"
-        />
+       <Input
+  label="Email Address"
+  type="email"
+  placeholder="Enter your email"
+  value={email}
+  onChange={(e)=>setEmail(e.target.value)}
+/>
 
         <Button>
           Send Reset Link

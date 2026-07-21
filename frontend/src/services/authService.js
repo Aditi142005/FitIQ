@@ -1,11 +1,11 @@
 import { 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signOut
+  signOut,
+  sendPasswordResetEmail
 } from "firebase/auth";
 
 import { auth } from "../firebase/firebase";
-
 
 export function signup(email, password) {
   return createUserWithEmailAndPassword(
@@ -25,4 +25,10 @@ export function login(email, password) {
 }
 export function logout() {
   return signOut(auth);
+}
+export function resetPassword(email) {
+  return sendPasswordResetEmail(
+    auth,
+    email
+  );
 }
