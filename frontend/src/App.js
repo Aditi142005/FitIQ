@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ProfileSetup from "./pages/ProfileSetup";
 function App() {
   return (
     <BrowserRouter>
@@ -12,7 +13,7 @@ function App() {
   <Route path="/" element={<Login />} />
 
   <Route path="/signup" element={<Signup />} />
-
+    <Route path="/profile-setup" element={<ProfileSetup />} />
   <Route 
     path="/forgot-password" 
     element={<ForgotPassword />} 

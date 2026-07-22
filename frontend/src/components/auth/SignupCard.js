@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { signup } from "../../services/authService";
 import Input from "../common/Input";
 import Button from "../common/Button";
 import { createUserProfile } from "../../services/firestoreService";
 function SignupCard() {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
@@ -20,7 +22,7 @@ const handleSignup = async (e) => {
       email
     );
 
-    alert("Account created successfully!");
+    navigate("/profile-setup");
 
   } catch (error) {
     alert(error.message);
