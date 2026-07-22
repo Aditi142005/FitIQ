@@ -3,22 +3,27 @@ import { useState } from "react";
 import { signup } from "../../services/authService";
 import Input from "../common/Input";
 import Button from "../common/Button";
-
+import { createUserProfile } from "../../services/firestoreService";
 function SignupCard() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const handleSignup = async (e) => {
   e.preventDefault();
 
   try {
-    await signup(email, password);
+    const userCredential = await signup(email, password);
 
-    alert("Account created successfully 🎉");
+    await createUserProfile(
+      userCredential.user.uid,
+      name,
+      email
+    );
+
+    alert("Account created successfully!");
 
   } catch (error) {
-
     alert(error.message);
-
   }
 };
   return (
@@ -38,10 +43,12 @@ const handleSignup = async (e) => {
 >
 
         <Input
-          label="Full Name"
-          type="text"
-          placeholder="Enter your full name"
-        />
+  label="Full Name"
+  type="text"
+  placeholder="Enter your full name"
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+/>
 
         <Input
   label="Email Address"
