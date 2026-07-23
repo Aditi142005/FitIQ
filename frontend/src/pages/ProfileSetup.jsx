@@ -1,7 +1,9 @@
 import { useState } from "react";
-
+import { auth } from "../firebase/firebase";
+import { updateUserProfile } from "../services/firestoreService";
+import { useNavigate } from "react-router-dom";
 function ProfileSetup() {
-
+const navigate = useNavigate();
   const [profile, setProfile] = useState({
     age: "",
     gender: "",
@@ -21,12 +23,33 @@ function ProfileSetup() {
   };
 
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    console.log(profile);
-  };
+  try {
 
+    const user = auth.currentUser;
+
+    if (!user) {
+      alert("No user logged in.");
+      return;
+    }
+
+    await updateUserProfile(user.uid, {
+  ...profile,
+  age: Number(profile.age),
+  height: Number(profile.height),
+  weight: Number(profile.weight),
+});
+
+    alert("Profile saved successfully! 🎉");
+
+    navigate("/dashboard");
+
+  } catch (error) {
+    alert(error.message);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
