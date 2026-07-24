@@ -1,10 +1,30 @@
+import { useEffect, useState } from "react";
+import { auth } from "../firebase/firebase";
+import { getUserProfile } from "../services/firestoreService";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../services/authService";
 
 function Dashboard() {
 
   const navigate = useNavigate();
+const [profile, setProfile] = useState(null);
+useEffect(() => {
 
+  async function fetchProfile() {
+
+    const user = auth.currentUser;
+
+    if (!user) return;
+
+    const data = await getUserProfile(user.uid);
+    console.log(data);
+    setProfile(data);
+    
+  }
+
+  fetchProfile();
+
+}, []);
   const handleLogout = async () => {
     try {
       await logout();
@@ -43,6 +63,27 @@ function Dashboard() {
     <p className="text-xl text-textSecondary mt-4">
       Your personalized fitness journey starts here.
     </p>
+    {profile && (
+  <div className="mt-8 bg-white p-6 rounded-2xl shadow-card max-w-md mx-auto">
+
+    <h2 className="text-2xl font-bold mb-4">
+      Your Profile
+    </h2>
+
+    <p>Age: {profile.age}</p>
+
+    <p>Height: {profile.height} cm</p>
+
+    <p>Weight: {profile.weight} kg</p>
+
+    <p>Goal: {profile.goal}</p>
+
+    <p>Activity Level: {profile.activityLevel}</p>
+
+    <p>Diet: {profile.dietPreference}</p>
+
+  </div>
+)}
 
   </div>
 
