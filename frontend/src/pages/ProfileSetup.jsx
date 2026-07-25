@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { auth } from "../firebase/firebase";
-import { updateUserProfile } from "../services/firestoreService";
+import {
+  updateUserProfile,
+  getUserProfile
+} from "../services/firestoreService";
 import { useNavigate } from "react-router-dom";
 function ProfileSetup() {
 const navigate = useNavigate();
@@ -13,7 +16,35 @@ const navigate = useNavigate();
     activityLevel: "",
     dietPreference: ""
   });
+useEffect(() => {
 
+  async function loadProfile() {
+
+    const user = auth.currentUser;
+
+    if (!user) return;
+
+    const data = await getUserProfile(user.uid);
+
+    if (data) {
+
+      setProfile({
+        age: data.age || "",
+        gender: data.gender || "",
+        height: data.height || "",
+        weight: data.weight || "",
+        goal: data.goal || "",
+        activityLevel: data.activityLevel || "",
+        dietPreference: data.dietPreference || ""
+      });
+
+    }
+
+  }
+
+  loadProfile();
+
+}, []);
 
   const handleChange = (e) => {
     setProfile({

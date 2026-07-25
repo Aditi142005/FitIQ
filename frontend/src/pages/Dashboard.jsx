@@ -81,7 +81,12 @@ useEffect(() => {
     <p>Activity Level: {profile.activityLevel}</p>
 
     <p>Diet: {profile.dietPreference}</p>
-
+      <button
+  onClick={() => navigate("/profile-setup")}
+  className="mt-6 bg-primary text-white px-6 py-2 rounded-xl font-semibold hover:bg-orange-700 transition"
+>
+  Edit Profile
+</button>
   </div>
 )}
 
