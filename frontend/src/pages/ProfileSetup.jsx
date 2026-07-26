@@ -46,12 +46,31 @@ useEffect(() => {
 
 }, []);
 
-  const handleChange = (e) => {
+ const handleChange = (e) => {
+  const { name, value, type, min, max } = e.target;
+
+  if (value === "") {
     setProfile({
       ...profile,
-      [e.target.name]: e.target.value
+      [name]: value,
     });
-  };
+    return;
+  }
+
+  if (type === "number") {
+    const num = Number(value);
+
+    if (!isNaN(num)) {
+      if (min !== "" && num < Number(min)) return;
+      if (max !== "" && num > Number(max)) return;
+    }
+  }
+
+  setProfile({
+    ...profile,
+    [name]: value,
+  });
+};
 
 
  const handleSubmit = async (e) => {
@@ -75,7 +94,7 @@ useEffect(() => {
 
     alert("Profile saved successfully! 🎉");
 
-    navigate("/dashboard");
+    navigate("/health-assessment");
 
   } catch (error) {
     alert(error.message);
@@ -97,31 +116,37 @@ useEffect(() => {
           className="space-y-4"
         >
 
-          <input
-            name="age"
-            placeholder="Age"
-            value={profile.age}
-            onChange={handleChange}
-            className="w-full border p-3 rounded"
-          />
+         <input
+  type="number"
+  name="age"
+  min="1"
+  max="120"
+  value={profile.age}
+  onChange={handleChange}
+  className="w-full border p-3 rounded"
+/>
 
 
-          <input
-            name="height"
-            placeholder="Height (cm)"
-            value={profile.height}
-            onChange={handleChange}
-            className="w-full border p-3 rounded"
-          />
+         <input
+  type="number"
+  name="height"
+  min="50"
+  max="250"
+  value={profile.height}
+  onChange={handleChange}
+  className="w-full border p-3 rounded"
+/>
 
 
-          <input
-            name="weight"
-            placeholder="Weight (kg)"
-            value={profile.weight}
-            onChange={handleChange}
-            className="w-full border p-3 rounded"
-          />
+        <input
+  type="number"
+  name="weight"
+  min="20"
+  max="300"
+  value={profile.weight}
+  onChange={handleChange}
+  className="w-full border p-3 rounded"
+/>
 
 
           <select

@@ -1,0 +1,362 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+function HealthAssessment() {
+const navigate = useNavigate();
+  const [step,setStep] = useState(1);
+
+
+  const [healthData,setHealthData] = useState({
+
+    sleepHours:"",
+    waterIntake:"",
+    dailySteps:"",
+    exerciseFrequency:"",
+
+    medicalConditions:"",
+    smoking:"",
+    alcohol:"",
+
+    mealsPerDay:"",
+    allergies:"",
+
+    stressLevel:"",
+    energyLevel:""
+
+  });
+
+
+const handleChange = (e) => {
+  const { name, value, type, min, max } = e.target;
+
+  // Allow clearing the field
+  if (value === "") {
+    setHealthData({
+      ...healthData,
+      [name]: value,
+    });
+    return;
+  }
+
+  // Validate numeric inputs
+  if (type === "number") {
+    const num = Number(value);
+
+    if (!isNaN(num)) {
+      if (min !== "" && num < Number(min)) return;
+      if (max !== "" && num > Number(max)) return;
+    }
+  }
+
+  setHealthData({
+    ...healthData,
+    [name]: value,
+  });
+};
+const validateStep = () => {
+
+  if (step === 1) {
+
+    if (
+      !healthData.sleepHours ||
+      !healthData.waterIntake ||
+      !healthData.dailySteps ||
+      !healthData.exerciseFrequency
+    ) {
+      alert("Please complete your lifestyle details.");
+      return false;
+    }
+
+  }
+
+  if (step === 2) {
+
+    if (
+      !healthData.smoking ||
+      !healthData.alcohol
+    ) {
+      alert("Please complete your health details.");
+      return false;
+    }
+
+  }
+
+  if (step === 3) {
+
+    if (
+      !healthData.mealsPerDay ||
+      !healthData.stressLevel ||
+      !healthData.energyLevel
+    ) {
+      alert("Please complete your nutrition and wellness details.");
+      return false;
+    }
+
+  }
+
+  return true;
+};
+
+  return (
+
+    <div className="min-h-screen flex items-center justify-center bg-background">
+
+      <div className="bg-white p-8 rounded-2xl shadow-card w-full max-w-md">
+
+
+        <h1 className="text-3xl font-heading font-bold mb-2">
+          Health Assessment
+        </h1>
+
+
+        <p className="mb-6">
+          Step {step} of 3
+        </p>
+<div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+  <div
+    className="bg-primary h-2 rounded-full transition-all duration-300"
+    style={{ width: `${(step / 3) * 100}%` }}
+  ></div>
+</div>
+
+        {
+          step === 1 && (
+
+            <div>
+
+              <h2 className="text-xl font-bold mb-4">
+                Lifestyle
+              </h2>
+
+
+              <input
+  type="number"
+  name="sleepHours"
+  min="0"
+  max="24"
+  step="0.5"
+  placeholder="Sleep hours/day"
+  value={healthData.sleepHours}
+  onChange={handleChange}
+  className="w-full border p-3 rounded mb-3"
+/>
+
+
+              <input
+              type="number"
+              min="0"
+              max="20"
+              step="0.1"
+              name="waterIntake"
+              placeholder="Water intake (litres)"
+              value={healthData.waterIntake}
+              onChange={handleChange}
+              className="w-full border p-3 rounded mb-3"
+              />
+
+
+              <input
+              type="number"
+              min="0"
+              max="100000"
+              name="dailySteps"
+              placeholder="Daily steps"
+              value={healthData.dailySteps}
+              onChange={handleChange}
+              className="w-full border p-3 rounded mb-3"
+              />
+
+
+              <input
+              type="number"
+              min="0"
+              max="7"
+              name="exerciseFrequency"
+              placeholder="Exercise days/week"
+              value={healthData.exerciseFrequency}
+              onChange={handleChange}
+              className="w-full border p-3 rounded mb-3"
+              />
+
+
+            </div>
+
+          )
+        }
+{
+  step === 2 && (
+
+    <div>
+
+      <h2 className="text-xl font-bold mb-4">
+        Health
+      </h2>
+
+
+      <textarea
+      name="medicalConditions"
+      placeholder="Medical Conditions (optional)"
+      onChange={handleChange}
+      className="w-full border p-3 rounded mb-3"
+      />
+
+
+      <select
+      name="smoking"
+      onChange={handleChange}
+      className="w-full border p-3 rounded mb-3"
+      >
+
+        <option value="">
+          Do you smoke?
+        </option>
+
+        <option>
+          Yes
+        </option>
+
+        <option>
+          No
+        </option>
+
+      </select>
+
+
+
+      <select
+      name="alcohol"
+      onChange={handleChange}
+      className="w-full border p-3 rounded mb-3"
+      >
+
+        <option value="">
+          Alcohol consumption
+        </option>
+
+        <option>
+          Regular
+        </option>
+
+        <option>
+          Occasionally
+        </option>
+
+        <option>
+          Never
+        </option>
+
+      </select>
+
+
+    </div>
+
+  )
+}
+{
+  step === 3 && (
+
+    <div>
+
+      <h2 className="text-xl font-bold mb-4">
+        Nutrition & Wellness
+      </h2>
+
+
+      <input
+      type="number"
+      min="1"
+      max="10"
+      name="mealsPerDay"
+      placeholder="Meals per day"
+      value={healthData.mealsPerDay}
+      onChange={handleChange}
+      className="w-full border p-3 rounded mb-3"
+      />
+
+
+      <input
+      name="allergies"
+      placeholder="Food allergies (optional)"
+      onChange={handleChange}
+      className="w-full border p-3 rounded mb-3"
+      />
+
+
+      <label>
+        Stress Level (1-5)
+      </label>
+
+      <input
+  type="number"
+  min="1"
+  max="5"
+  name="stressLevel"
+  value={healthData.stressLevel}
+  onChange={handleChange}
+  className="w-full border p-3 rounded mb-3"
+/>
+ <label>
+        Energy Level (1-5)
+      </label>
+<input
+  type="number"
+  min="1"
+  max="5"
+  name="energyLevel"
+  value={healthData.energyLevel}
+  onChange={handleChange}
+  className="w-full border p-3 rounded mb-3"
+/>
+
+
+    </div>
+
+  )
+}
+<div className="flex justify-between mt-6">
+
+  {step > 1 && (
+    <button
+      type="button"
+      onClick={() => setStep(step - 1)}
+      className="bg-gray-300 px-6 py-3 rounded-xl"
+    >
+      Back
+    </button>
+  )}
+
+  <button
+    type="button"
+    onClick={() => {
+
+      if (!validateStep()) return;
+
+      if (step < 3) {
+        setStep(step + 1);
+      } else {
+
+    console.log(healthData);
+
+    alert("Assessment Completed 🎉");
+
+    navigate("/dashboard");
+
+}
+
+    }}
+    className="bg-primary text-white px-6 py-3 rounded-xl ml-auto"
+  >
+    {step === 3 ? "Complete Assessment" : "Next"}
+  </button>
+
+</div>
+
+      </div>
+
+    </div>
+
+  );
+
+}
+
+
+export default HealthAssessment;

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import HealthAssessment from "./pages/HealthAssessment";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -14,6 +15,14 @@ function App() {
 
   <Route path="/signup" element={<Signup />} />
     <Route path="/profile-setup" element={<ProfileSetup />} />
+    <Route 
+  path="/health-assessment" 
+  element={
+    <ProtectedRoute>
+      <HealthAssessment />
+    </ProtectedRoute>
+  }
+/>
   <Route 
     path="/forgot-password" 
     element={<ForgotPassword />} 
