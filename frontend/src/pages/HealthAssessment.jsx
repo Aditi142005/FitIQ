@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { auth } from "../firebase/firebase";
+import { updateUserProfile } from "../services/firestoreService";
 function HealthAssessment() {
 const navigate = useNavigate();
   const [step,setStep] = useState(1);
@@ -326,7 +328,7 @@ const validateStep = () => {
 
   <button
     type="button"
-    onClick={() => {
+    onClick={async() => {
 
       if (!validateStep()) return;
 
@@ -334,11 +336,42 @@ const validateStep = () => {
         setStep(step + 1);
       } else {
 
-    console.log(healthData);
+  try {
 
-    alert("Assessment Completed 🎉");
+    const user = auth.currentUser;
+
+    if (!user) {
+      alert("No user logged in.");
+      return;
+    }
+
+    await updateUserProfile(user.uid, {
+
+      ...healthData,
+
+      sleepHours: Number(healthData.sleepHours),
+      waterIntake: Number(healthData.waterIntake),
+      dailySteps: Number(healthData.dailySteps),
+      exerciseFrequency: Number(healthData.exerciseFrequency),
+      mealsPerDay: Number(healthData.mealsPerDay),
+      stressLevel: Number(healthData.stressLevel),
+      energyLevel: Number(healthData.energyLevel),
+
+      healthAssessmentCompleted: true
+
+    });
+
+    alert("Health Assessment Saved Successfully 🎉");
 
     navigate("/dashboard");
+
+  }
+
+  catch(error){
+
+    alert(error.message);
+
+  }
 
 }
 

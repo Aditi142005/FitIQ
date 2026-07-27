@@ -4,9 +4,11 @@ import {
   updateUserProfile,
   getUserProfile
 } from "../services/firestoreService";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 function ProfileSetup() {
 const navigate = useNavigate();
+const [searchParams] = useSearchParams();
+const isEditMode = searchParams.get("edit") === "true";
   const [profile, setProfile] = useState({
     age: "",
     gender: "",
@@ -29,13 +31,13 @@ useEffect(() => {
     if (data) {
 
       setProfile({
-        age: data.age || "",
-        gender: data.gender || "",
-        height: data.height || "",
-        weight: data.weight || "",
-        goal: data.goal || "",
-        activityLevel: data.activityLevel || "",
-        dietPreference: data.dietPreference || ""
+        age: data.age ?? "",
+        gender: data.gender ?? "",
+        height: data.height ?? "",
+        weight: data.weight ?? "",
+        goal: data.goal ?? "",
+        activityLevel: data.activityLevel ?? "",
+        dietPreference: data.dietPreference ?? ""
       });
 
     }
@@ -47,31 +49,13 @@ useEffect(() => {
 }, []);
 
  const handleChange = (e) => {
-  const { name, value, type, min, max } = e.target;
-
-  if (value === "") {
-    setProfile({
-      ...profile,
-      [name]: value,
-    });
-    return;
-  }
-
-  if (type === "number") {
-    const num = Number(value);
-
-    if (!isNaN(num)) {
-      if (min !== "" && num < Number(min)) return;
-      if (max !== "" && num > Number(max)) return;
-    }
-  }
+  const { name, value } = e.target;
 
   setProfile({
     ...profile,
     [name]: value,
   });
 };
-
 
  const handleSubmit = async (e) => {
   e.preventDefault();
@@ -84,7 +68,29 @@ useEffect(() => {
       alert("No user logged in.");
       return;
     }
+if(profile.height < 50 || profile.height > 250){
+  alert("Height must be between 50 and 250 cm");
+  return;
+}
 
+if(profile.weight < 20 || profile.weight > 300){
+  alert("Weight must be between 20 and 300 kg");
+  return;
+}
+
+if(profile.age < 1 || profile.age > 120){
+  alert("Please enter a valid age");
+  return;
+}
+if (
+  !profile.gender ||
+  !profile.goal ||
+  !profile.activityLevel ||
+  !profile.dietPreference
+) {
+  alert("Please complete all profile details.");
+  return;
+}
     await updateUserProfile(user.uid, {
   ...profile,
   age: Number(profile.age),
@@ -94,7 +100,11 @@ useEffect(() => {
 
     alert("Profile saved successfully! 🎉");
 
-    navigate("/health-assessment");
+if (isEditMode) {
+  navigate("/dashboard");
+} else {
+  navigate("/health-assessment");
+}
 
   } catch (error) {
     alert(error.message);
@@ -106,16 +116,18 @@ useEffect(() => {
 
       <div className="bg-white p-8 rounded-2xl shadow-card w-full max-w-md">
 
-        <h1 className="text-3xl font-heading font-bold mb-6">
-          Complete Your Profile
-        </h1>
+       <h1 className="text-3xl font-heading font-bold mb-6">
+  {isEditMode ? "Edit Your Profile" : "Complete Your Profile"}
+</h1>
 
 
         <form 
           onSubmit={handleSubmit}
           className="space-y-4"
         >
-
+<label className="block mb-1 font-medium">
+ Age
+</label>
          <input
   type="number"
   name="age"
@@ -126,7 +138,9 @@ useEffect(() => {
   className="w-full border p-3 rounded"
 />
 
-
+<label className="block mb-1 font-medium">
+  Height (cm)
+</label>
          <input
   type="number"
   name="height"
@@ -136,8 +150,9 @@ useEffect(() => {
   onChange={handleChange}
   className="w-full border p-3 rounded"
 />
-
-
+<label className="block mb-1 font-medium">
+  Weight (kg)
+</label>
         <input
   type="number"
   name="weight"
@@ -204,8 +219,8 @@ useEffect(() => {
           <button
             className="w-full bg-primary text-white py-3 rounded-xl"
           >
-            Save Profile
-          </button>
+  {isEditMode ? "Update Profile" : "Save Profile"}
+</button>
 
 
         </form>

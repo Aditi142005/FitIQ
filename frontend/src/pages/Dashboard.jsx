@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { auth } from "../firebase/firebase";
 import { getUserProfile } from "../services/firestoreService";
-import { useNavigate } from "react-router-dom";
+import { useNavigate} from "react-router-dom";
 import { logout } from "../services/authService";
 
 function Dashboard() {
@@ -82,7 +82,7 @@ useEffect(() => {
 
     <p>Diet: {profile.dietPreference}</p>
       <button
-  onClick={() => navigate("/profile-setup")}
+ onClick={() => navigate("/profile-setup?edit=true")}
   className="mt-6 bg-primary text-white px-6 py-2 rounded-xl font-semibold hover:bg-orange-700 transition"
 >
   Edit Profile
