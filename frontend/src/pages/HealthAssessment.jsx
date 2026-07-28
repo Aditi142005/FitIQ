@@ -1,7 +1,11 @@
 import { useState } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase/firebase";
-import { updateUserProfile } from "../services/firestoreService";
+import { 
+  updateUserProfile,
+  getUserProfile
+} from "../services/firestoreService";
 function HealthAssessment() {
 const navigate = useNavigate();
   const [step,setStep] = useState(1);
@@ -344,6 +348,26 @@ const validateStep = () => {
       alert("No user logged in.");
       return;
     }
+    const profile = await getUserProfile(user.uid);
+
+if (!profile) {
+  alert("Profile data not found.");
+  return;
+}
+const analysisResponse = await axios.post(
+  "http://127.0.0.1:5000/body-analysis",
+  {
+    age: Number(profile.age),
+    gender: profile.gender,
+    height: Number(profile.height),
+    weight: Number(profile.weight),
+    activityLevel: profile.activityLevel
+  }
+);
+
+const bodyAnalysis = analysisResponse.data;
+
+console.log(bodyAnalysis);
 
     await updateUserProfile(user.uid, {
 
@@ -357,6 +381,7 @@ const validateStep = () => {
       stressLevel: Number(healthData.stressLevel),
       energyLevel: Number(healthData.energyLevel),
 
+ bodyAnalysis,
       healthAssessmentCompleted: true
 
     });
