@@ -3,7 +3,7 @@ import { auth } from "../firebase/firebase";
 import { getUserProfile } from "../services/firestoreService";
 import { useNavigate} from "react-router-dom";
 import { logout } from "../services/authService";
-
+import Sidebar from "../components/Sidebar";
 function Dashboard() {
 
   const navigate = useNavigate();
@@ -36,7 +36,11 @@ useEffect(() => {
 
 
   return (
-    <div className="min-h-screen bg-background p-8">
+  <div className="min-h-screen bg-background flex">
+
+    <Sidebar />
+
+    <div className="flex-1 p-8">
 
   <div className="flex justify-between items-center">
 
@@ -64,34 +68,54 @@ useEffect(() => {
       Your personalized fitness journey starts here.
     </p>
     {profile && (
-  <div className="mt-8 bg-white p-6 rounded-2xl shadow-card max-w-md mx-auto">
+  <>
+    {/* Profile Card */}
+    <div className="mt-8 bg-white p-6 rounded-2xl shadow-card max-w-md mx-auto">
+      <h2 className="text-2xl font-bold mb-4">
+        Your Profile
+      </h2>
 
-    <h2 className="text-2xl font-bold mb-4">
-      Your Profile
-    </h2>
+      <p>Age: {profile.age}</p>
+      <p>Height: {profile.height} cm</p>
+      <p>Weight: {profile.weight} kg</p>
+      <p>Goal: {profile.goal}</p>
+      <p>Activity Level: {profile.activityLevel}</p>
+      <p>Diet: {profile.dietPreference}</p>
 
-    <p>Age: {profile.age}</p>
-
-    <p>Height: {profile.height} cm</p>
-
-    <p>Weight: {profile.weight} kg</p>
-
-    <p>Goal: {profile.goal}</p>
-
-    <p>Activity Level: {profile.activityLevel}</p>
-
-    <p>Diet: {profile.dietPreference}</p>
       <button
- onClick={() => navigate("/profile-setup?edit=true")}
-  className="mt-6 bg-primary text-white px-6 py-2 rounded-xl font-semibold hover:bg-orange-700 transition"
->
-  Edit Profile
-</button>
-  </div>
+        onClick={() => navigate("/profile-setup?edit=true")}
+        className="mt-6 bg-primary text-white px-6 py-2 rounded-xl font-semibold hover:bg-orange-700 transition"
+      >
+        Edit Profile
+      </button>
+    </div>
+
+    {/* Body Analysis Card */}
+    {profile.bodyAnalysis && (
+      <div className="mt-8 bg-white p-6 rounded-2xl shadow-card max-w-md mx-auto">
+        <h2 className="text-2xl font-bold mb-4">
+          📊 Body Analysis
+        </h2>
+
+        <p><strong>BMI:</strong> {profile.bodyAnalysis.bmi.toFixed(2)}</p>
+        <p><strong>Category:</strong> {profile.bodyAnalysis.category}</p>
+        <p><strong>BMR:</strong> {profile.bodyAnalysis.bmr.toFixed(2)}
+ kcal/day</p>
+        <p><strong>TDEE:</strong> {profile.bodyAnalysis.tdee.toFixed(2)} kcal/day</p>
+
+        <p>
+          <strong>Ideal Weight:</strong>{" "}
+          {profile.bodyAnalysis.idealWeight.min.toFixed(2)} kg -{" "}
+          {profile.bodyAnalysis.idealWeight.max.toFixed(2)} kg
+        </p>
+      </div>
+    )}
+  </>
 )}
 
   </div>
 
+</div>
 </div>
   );
 }
