@@ -64,62 +64,8 @@ function Dashboard() {
 
       {profile && (
         <>
-         {/* Profile Card */}
-<div className="mt-8 bg-white p-6 rounded-2xl shadow-card max-w-md mx-auto">
+          
 
-  <h2 className="text-2xl font-bold mb-4">
-    Your Profile
-  </h2>
-
-  <p>Age: {profile.age}</p>
-  <p>Height: {profile.height} cm</p>
-  <p>Weight: {profile.weight} kg</p>
-  <p>Goal: {profile.goal}</p>
-  <p>Activity Level: {profile.activityLevel}</p>
-  <p>Diet: {profile.dietPreference}</p>
-
-  <button
-    onClick={() => navigate("/profile-setup?edit=true")}
-    className="mt-6 bg-primary text-white px-6 py-2 rounded-xl font-semibold hover:bg-orange-700 transition"
-  >
-    Edit Profile
-  </button>
-
-</div>
-
-
-{/* Body Analysis Card */}
-{profile.bodyAnalysis && (
-  <div className="mt-8 bg-white p-6 rounded-2xl shadow-card max-w-md mx-auto">
-
-    <h2 className="text-2xl font-bold mb-4">
-      📊 Body Analysis
-    </h2>
-
-    <p>
-      <strong>BMI:</strong> {profile.bodyAnalysis.bmi}
-    </p>
-
-    <p>
-      <strong>Category:</strong> {profile.bodyAnalysis.category}
-    </p>
-
-    <p>
-      <strong>BMR:</strong> {profile.bodyAnalysis.bmr} kcal/day
-    </p>
-
-    <p>
-      <strong>TDEE:</strong> {profile.bodyAnalysis.tdee} kcal/day
-    </p>
-
-    <p>
-      <strong>Ideal Weight:</strong>{" "}
-      {profile.bodyAnalysis.idealWeight.min} kg -{" "}
-      {profile.bodyAnalysis.idealWeight.max} kg
-    </p>
-
-  </div>
-)}
         </>
       )}
 
@@ -127,16 +73,78 @@ function Dashboard() {
   )}
 
   {activePage === "analytics" && (
-    <h1 className="text-4xl font-bold">
-      Analytics
+  <>
+    <h1 className="text-4xl font-bold mb-8">
+      📊 Analytics
     </h1>
-  )}
+
+    {profile?.bodyAnalysis && (
+      <div className="bg-white p-6 rounded-2xl shadow-card max-w-md mx-auto">
+
+        <h2 className="text-2xl font-bold mb-4">
+          Body Analysis
+        </h2>
+
+        <p>
+          <strong>BMI:</strong> {profile.bodyAnalysis.bmi}
+        </p>
+
+        <p>
+          <strong>Category:</strong> {profile.bodyAnalysis.category}
+        </p>
+
+        <p>
+          <strong>BMR:</strong> {profile.bodyAnalysis.bmr} kcal/day
+        </p>
+
+        <p>
+          <strong>TDEE:</strong> {profile.bodyAnalysis.tdee} kcal/day
+        </p>
+
+        <p>
+          <strong>Ideal Weight:</strong>{" "}
+          {profile.bodyAnalysis.idealWeight.min} kg -
+          {profile.bodyAnalysis.idealWeight.max} kg
+        </p>
+
+      </div>
+    )}
+
+  </>
+)}
 
   {activePage === "profile" && (
-    <h1 className="text-4xl font-bold">
-      Profile
+  <>
+    <h1 className="text-4xl font-bold mb-8">
+      👤 Profile
     </h1>
-  )}
+
+    {profile && (
+      <div className="bg-white p-6 rounded-2xl shadow-card max-w-md mx-auto">
+
+        <h2 className="text-2xl font-bold mb-4">
+          Your Details
+        </h2>
+
+        <p>Age: {profile.age}</p>
+        <p>Height: {profile.height} cm</p>
+        <p>Weight: {profile.weight} kg</p>
+        <p>Goal: {profile.goal}</p>
+        <p>Activity Level: {profile.activityLevel}</p>
+        <p>Diet: {profile.dietPreference}</p>
+
+        <button
+          onClick={() => navigate("/profile-setup?edit=true")}
+          className="mt-6 bg-primary text-white px-6 py-2 rounded-xl font-semibold hover:bg-orange-700 transition"
+        >
+          Edit Profile
+        </button>
+
+      </div>
+    )}
+
+  </>
+)}
 
   {activePage === "nutrition" && (
     <h1 className="text-4xl font-bold">
