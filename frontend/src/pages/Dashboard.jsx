@@ -62,12 +62,95 @@ function Dashboard() {
         Your personalized fitness journey starts here.
       </p>
 
-      {profile && (
-        <>
-          
+     {profile && (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 max-w-3xl mx-auto">
 
-        </>
-      )}
+    {/* Health Score */}
+    <div className="bg-white p-6 rounded-2xl shadow-card">
+      <h2 className="text-xl font-bold">
+        ❤️ Health Score
+      </h2>
+
+      <p className="text-4xl font-bold text-primary mt-4">
+        --
+      </p>
+
+      <p className="text-textSecondary mt-2">
+        Based on your lifestyle and fitness habits
+      </p>
+    </div>
+
+
+    {/* BMI */}
+    <div className="bg-white p-6 rounded-2xl shadow-card">
+      <h2 className="text-xl font-bold">
+        📊 BMI
+      </h2>
+
+      <p className="text-3xl text-primary mt-4">
+        {profile.bodyAnalysis?.bmi || "N/A"}
+      </p>
+
+      <p>
+        {profile.bodyAnalysis?.category}
+      </p>
+    </div>
+
+
+    {/* Weight */}
+    <div className="bg-white p-6 rounded-2xl shadow-card">
+      <h2 className="text-xl font-bold">
+        ⚖️ Weight
+      </h2>
+
+      <p className="text-3xl text-primary mt-4">
+        {profile.weight} kg
+      </p>
+    </div>
+
+
+    {/* Activity */}
+    <div className="bg-white p-6 rounded-2xl shadow-card">
+      <h2 className="text-xl font-bold">
+        🏃 Activity
+      </h2>
+
+      <p className="text-xl mt-4">
+        {profile.activityLevel}
+      </p>
+    </div>
+
+
+    {/* Streak */}
+    <div className="bg-white p-6 rounded-2xl shadow-card">
+      <h2 className="text-xl font-bold">
+        🔥 Fitness Streak
+      </h2>
+
+      <p className="text-3xl text-primary mt-4">
+        0 Days
+      </p>
+
+      <p>
+        Start completing daily goals!
+      </p>
+    </div>
+
+
+    {/* Recommendation */}
+    <div className="bg-white p-6 rounded-2xl shadow-card">
+      <h2 className="text-xl font-bold">
+        🎯 Recommendation
+      </h2>
+
+      <p className="mt-4">
+        Personalized recommendations will appear here.
+      </p>
+    </div>
+
+
+  </div>
+)}
 
     </>
   )}
