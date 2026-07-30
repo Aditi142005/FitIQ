@@ -1,4 +1,4 @@
-function Sidebar() {
+function Sidebar({ setActivePage }) {
   return (
     <div className="w-64 min-h-screen bg-white shadow-card p-6">
 
@@ -8,29 +8,47 @@ function Sidebar() {
 
       <nav className="space-y-4">
 
-        <button className="w-full text-left p-3 rounded-xl hover:bg-orange-100">
-          🏠 Dashboard
-        </button>
+        <button
+  onClick={() => setActivePage("dashboard")}
+  className="w-full text-left p-3 rounded-xl hover:bg-orange-100"
+>
+  🏠 Dashboard
+</button>
 
-        <button className="w-full text-left p-3 rounded-xl hover:bg-orange-100">
-          📊 Analytics
-        </button>
+       <button
+  onClick={() => setActivePage("analytics")}
+  className="w-full text-left p-3 rounded-xl hover:bg-orange-100"
+>
+  📊 Analytics
+</button>
 
-        <button className="w-full text-left p-3 rounded-xl hover:bg-orange-100">
-          🍎 Nutrition
-        </button>
+       <button
+  onClick={() => setActivePage("nutrition")}
+  className="w-full text-left p-3 rounded-xl hover:bg-orange-100"
+>
+  🍎 Nutrition
+</button>
 
-        <button className="w-full text-left p-3 rounded-xl hover:bg-orange-100">
-          💪 Workout
-        </button>
+        <button
+  onClick={() => setActivePage("workout")}
+  className="w-full text-left p-3 rounded-xl hover:bg-orange-100"
+>
+  💪 Workout
+</button>
 
-        <button className="w-full text-left p-3 rounded-xl hover:bg-orange-100">
-          🎯 Recommendations
-        </button>
+        <button
+  onClick={() => setActivePage("recommendations")}
+  className="w-full text-left p-3 rounded-xl hover:bg-orange-100"
+>
+  🎯 Recommendations
+</button>
 
-        <button className="w-full text-left p-3 rounded-xl hover:bg-orange-100">
-          👤 Profile
-        </button>
+        <button
+  onClick={() => setActivePage("profile")}
+  className="w-full text-left p-3 rounded-xl hover:bg-orange-100"
+>
+  👤 Profile
+</button>
 
       </nav>
 
