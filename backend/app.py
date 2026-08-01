@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-
+from analytics.recommendation import generate_recommendations
 from analytics.bodyAnalysis import (
     calculate_bmi,
     bmi_category,
@@ -58,6 +58,16 @@ def body_analysis():
         }
     })
 
+@app.route("/recommendations", methods=["POST"])
+def recommendations():
+
+    data = request.json
+
+    result = generate_recommendations(data)
+
+    return jsonify({
+        "recommendations": result
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)

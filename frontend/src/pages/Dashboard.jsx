@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Recommendation from "./recommendation";
 import { auth } from "../firebase/firebase";
 import { getUserProfile } from "../services/firestoreService";
 import { useNavigate} from "react-router-dom";
@@ -6,11 +7,23 @@ import { logout } from "../services/authService";
 import Sidebar from "../components/Sidebar";
 
 function Dashboard() {
-
+  const [goals, setGoals] = useState({
+  water: false,
+  workout: false,
+  steps: false,
+  sleep: false
+});
+const toggleGoal = (goal) => {
+  setGoals({
+    ...goals,
+    [goal]: !goals[goal]
+  });
+};
   const navigate = useNavigate();
 
   const [activePage, setActivePage] = useState("dashboard");
   const [profile, setProfile] = useState(null);
+
 
   useEffect(() => {
     async function fetchProfile() {
@@ -28,6 +41,7 @@ function Dashboard() {
     fetchProfile();
 
   }, []);
+ 
   const handleLogout = async () => {
     try {
       await logout();
@@ -55,7 +69,7 @@ function Dashboard() {
   {activePage === "dashboard" && (
     <>
       <h1 className="text-5xl font-heading font-bold text-textPrimary">
-        Welcome to FitIQ
+        Welcome back, {profile?.name || "there"} 👋
       </h1>
 
       <p className="text-xl text-textSecondary mt-4">
@@ -122,33 +136,99 @@ function Dashboard() {
 
 
     {/* Streak */}
-    <div className="bg-white p-6 rounded-2xl shadow-card">
-      <h2 className="text-xl font-bold">
-        🔥 Fitness Streak
-      </h2>
+<div className="bg-white p-6 rounded-2xl shadow-card">
 
-      <p className="text-3xl text-primary mt-4">
-        0 Days
-      </p>
+  <h2 className="text-xl font-bold">
+    🔥 Fitness Streak
+  </h2>
 
-      <p>
-        Start completing daily goals!
-      </p>
-    </div>
+  <p className="text-3xl text-primary mt-4">
+    0 Days
+  </p>
+
+  <p className="mt-2">
+    Today's completion:
+  </p>
+
+  <p className="text-xl font-semibold">
+    {
+      Math.round(
+        (Object.values(goals).filter(Boolean).length / 4) * 100
+      )
+    }%
+  </p>
+
+</div>
+
+<div className="bg-white p-6 rounded-2xl shadow-card">
+
+<h2 className="text-xl font-bold">
+✅ Today's Goals
+</h2>
+
+<div className="mt-4 space-y-4 text-left">
+
+  <label className="flex items-center gap-3">
+    <input
+      type="checkbox"
+      checked={goals.water}
+      onChange={() => toggleGoal("water")}
+    />
+    <span>Drink enough water</span>
+  </label>
 
 
-    {/* Recommendation */}
-    <div className="bg-white p-6 rounded-2xl shadow-card">
-      <h2 className="text-xl font-bold">
-        🎯 Recommendation
-      </h2>
-
-      <p className="mt-4">
-        Personalized recommendations will appear here.
-      </p>
-    </div>
+  <label className="flex items-center gap-3">
+    <input
+      type="checkbox"
+      checked={goals.workout}
+      onChange={() => toggleGoal("workout")}
+    />
+    <span>Complete workout</span>
+  </label>
 
 
+  <label className="flex items-center gap-3">
+    <input
+      type="checkbox"
+      checked={goals.steps}
+      onChange={() => toggleGoal("steps")}
+    />
+    <span>Walk daily steps</span>
+  </label>
+
+
+  <label className="flex items-center gap-3">
+    <input
+      type="checkbox"
+      checked={goals.sleep}
+      onChange={() => toggleGoal("sleep")}
+    />
+    <span>Maintain sleep target</span>
+  </label>
+
+</div>
+
+</div>
+{/* Daily Progress */}
+<div className="bg-white p-6 rounded-2xl shadow-card">
+
+  <h2 className="text-xl font-bold">
+    📈 Today's Progress
+  </h2>
+
+  <p className="text-3xl text-primary mt-4">
+    {
+      Object.values(goals).filter(Boolean).length
+    } / 4
+  </p>
+
+  <p className="mt-2">
+    Goals Completed
+  </p>
+
+</div>
+   
   </div>
 )}
 
@@ -241,11 +321,9 @@ function Dashboard() {
     </h1>
   )}
 
-  {activePage === "recommendations" && (
-    <h1 className="text-4xl font-bold">
-      Recommendations
-    </h1>
-  )}
+{activePage === "recommendations" && (
+   <Recommendation />
+)}
 
 </div>
 
