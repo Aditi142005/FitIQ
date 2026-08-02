@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { auth } from "../firebase/firebase";
+import axios from "axios";
 import {
   updateUserProfile,
   getUserProfile
@@ -91,11 +92,29 @@ if (
   alert("Please complete all profile details.");
   return;
 }
-    await updateUserProfile(user.uid, {
+    // First save the updated profile
+await updateUserProfile(user.uid, {
   ...profile,
   age: Number(profile.age),
   height: Number(profile.height),
   weight: Number(profile.weight),
+});
+
+// Then recalculate body analysis
+const response = await axios.post(
+  "http://127.0.0.1:5000/body-analysis",
+  {
+    age: Number(profile.age),
+    gender: profile.gender,
+    height: Number(profile.height),
+    weight: Number(profile.weight),
+    activityLevel: profile.activityLevel,
+  }
+);
+
+// Save the new body analysis to Firestore
+await updateUserProfile(user.uid, {
+  bodyAnalysis: response.data,
 });
 
     alert("Profile saved successfully! 🎉");

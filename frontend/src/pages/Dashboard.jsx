@@ -24,6 +24,33 @@ const toggleGoal = (goal) => {
   const [activePage, setActivePage] = useState("dashboard");
   const [profile, setProfile] = useState(null);
 
+const calculateHealthScore = () => {
+  if (!profile) return 0;
+
+  let score = 100;
+
+  // BMI
+  if (profile.bodyAnalysis?.category === "Overweight") score -= 10;
+  if (profile.bodyAnalysis?.category === "Obese") score -= 20;
+  if (profile.bodyAnalysis?.category === "Underweight") score -= 10;
+
+  // Sleep
+  if (profile.sleepHours < 7) score -= 10;
+
+  // Water
+  if (profile.waterIntake < 2) score -= 10;
+
+  // Steps
+  if (profile.dailySteps < 6000) score -= 10;
+
+  // Exercise
+  if (profile.exerciseFrequency === "Never") score -= 15;
+  else if (profile.exerciseFrequency === "1-2 Days") score -= 5;
+
+  return Math.max(score, 0);
+};
+
+const healthScore = calculateHealthScore();
 
   useEffect(() => {
     async function fetchProfile() {
@@ -86,8 +113,17 @@ const toggleGoal = (goal) => {
       </h2>
 
       <p className="text-4xl font-bold text-primary mt-4">
-        --
-      </p>
+  {healthScore}/100
+</p>
+<p className="mt-2 font-semibold">
+  {healthScore >= 85
+    ? "Excellent"
+    : healthScore >= 70
+    ? "Good"
+    : healthScore >= 50
+    ? "Needs Improvement"
+    : "Poor"}
+</p>
 
       <p className="text-textSecondary mt-2">
         Based on your lifestyle and fitness habits
