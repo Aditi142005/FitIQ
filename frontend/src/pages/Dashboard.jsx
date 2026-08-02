@@ -1,23 +1,82 @@
 import { useEffect, useState } from "react";
 import Recommendation from "./recommendation";
 import { auth } from "../firebase/firebase";
-import { getUserProfile } from "../services/firestoreService";
+import { 
+  getUserProfile,
+  updateDailyGoals,
+  updateTodayCompletion
+} from "../services/firestoreService";
 import { useNavigate} from "react-router-dom";
 import { logout } from "../services/authService";
 import Sidebar from "../components/Sidebar";
 
 function Dashboard() {
+  const [streak, setStreak] = useState(0);
+  const [todayCompleted, setTodayCompleted] = useState(false);
   const [goals, setGoals] = useState({
   water: false,
   workout: false,
   steps: false,
   sleep: false
 });
-const toggleGoal = (goal) => {
-  setGoals({
+const toggleGoal = async (goal) => {
+
+  const updatedGoals = {
     ...goals,
     [goal]: !goals[goal]
-  });
+  };
+
+  setGoals(updatedGoals);
+
+  const user = auth.currentUser;
+
+  if (user) {
+
+    await updateDailyGoals(
+      user.uid,
+      updatedGoals
+    );
+
+
+    const completed = Object.values(updatedGoals)
+      .every(value => value === true);
+
+
+    if(completed){
+
+  setTodayCompleted(true);
+
+  const userRef = auth.currentUser;
+
+  if(userRef){
+
+    await updateTodayCompletion(
+      userRef.uid,
+      true
+    );
+
+  }
+
+}
+else{
+
+  setTodayCompleted(false);
+
+  const userRef = auth.currentUser;
+
+  if(userRef){
+
+    await updateTodayCompletion(
+      userRef.uid,
+      false
+    );
+
+  }
+
+}
+
+  }
+
 };
   const navigate = useNavigate();
 
@@ -102,7 +161,8 @@ const healthScore = calculateHealthScore();
       const data = await getUserProfile(user.uid);
       console.log(data);
       setProfile(data);
-
+      setStreak(data.streak || 0);
+      setTodayCompleted(data.todayCompleted || false);
     }
 
     fetchProfile();
@@ -218,9 +278,9 @@ const healthScore = calculateHealthScore();
     🔥 Fitness Streak
   </h2>
 
-  <p className="text-3xl text-primary mt-4">
-    0 Days
-  </p>
+ <p className="text-3xl text-primary mt-4">
+  {todayCompleted ? streak + 1 : streak} Days
+</p>
 
   <p className="mt-2">
     Today's completion:
