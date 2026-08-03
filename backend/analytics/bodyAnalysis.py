@@ -39,6 +39,42 @@ def calculate_bmr(weight, height, age, gender):
 
     return round(bmr, 2)
 
+def calculate_health_score(data):
+
+    score = 100
+
+    bmi = data["bmi"]
+
+    if bmi < 18.5 or bmi > 30:
+        score -= 20
+    elif bmi >= 25:
+        score -= 10
+
+
+    if data["sleepHours"] < 7:
+        score -= 10
+
+
+    if data["waterIntake"] < 2:
+        score -= 10
+
+
+    if data["dailySteps"] < 5000:
+        score -= 15
+
+
+    if data["exerciseFrequency"] < 3:
+        score -= 15
+
+
+    if data["stressLevel"] >= 4:
+        score -= 10
+
+
+    if score < 0:
+        score = 0
+
+    return score
 #calculate total daily energy expenditure (TDEE) based on BMR and activity level
 def calculate_tdee(bmr, activity_level):
 

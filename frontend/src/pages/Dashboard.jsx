@@ -446,10 +446,61 @@ const healthScore = calculateHealthScore();
 )}
 
   {activePage === "nutrition" && (
-    <h1 className="text-4xl font-bold">
-      Nutrition
+  <>
+    <h1 className="text-4xl font-bold mb-8">
+      🥗 Nutrition
     </h1>
-  )}
+
+    {profile && (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+
+        <div className="bg-white p-6 rounded-2xl shadow-card">
+          <h2 className="text-xl font-bold">
+            🔥 Daily Calories
+          </h2>
+
+          <p className="text-3xl text-primary mt-4">
+            {profile.bodyAnalysis?.tdee || "N/A"} kcal
+          </p>
+        </div>
+
+
+        <div className="bg-white p-6 rounded-2xl shadow-card">
+          <h2 className="text-xl font-bold">
+            💧 Water Intake
+          </h2>
+
+          <p className="text-3xl text-primary mt-4">
+            {profile.waterIntake || 0} L
+          </p>
+        </div>
+
+
+        <div className="bg-white p-6 rounded-2xl shadow-card">
+          <h2 className="text-xl font-bold">
+            🍽 Meals Per Day
+          </h2>
+
+          <p className="text-3xl text-primary mt-4">
+            {profile.mealsPerDay || "N/A"}
+          </p>
+        </div>
+
+
+        <div className="bg-white p-6 rounded-2xl shadow-card">
+          <h2 className="text-xl font-bold">
+            🥦 Diet Preference
+          </h2>
+
+          <p className="text-xl mt-4">
+            {profile.dietPreference}
+          </p>
+        </div>
+
+      </div>
+    )}
+  </>
+)}
 
   {activePage === "workout" && (
     <h1 className="text-4xl font-bold">
