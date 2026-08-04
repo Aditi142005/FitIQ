@@ -6,7 +6,8 @@ from analytics.bodyAnalysis import (
     bmi_category,
     calculate_bmr,
     calculate_tdee,
-    ideal_weight_range
+    ideal_weight_range,
+    calculate_health_score
 )
 
 app = Flask(__name__)
@@ -46,7 +47,16 @@ def body_analysis():
     )
 
     ideal_min, ideal_max = ideal_weight_range(height)
+    health_data = {
+    "bmi": bmi,
+    "sleepHours": data["sleepHours"],
+    "waterIntake": data["waterIntake"],
+    "dailySteps": data["dailySteps"],
+    "exerciseFrequency": data["exerciseFrequency"],
+    "stressLevel": data["stressLevel"]
+}
 
+    health_score = calculate_health_score(health_data)
     return jsonify({
         "bmi": bmi,
         "category": category,
@@ -55,7 +65,8 @@ def body_analysis():
         "idealWeight": {
             "min": ideal_min,
             "max": ideal_max
-        }
+        },
+        "healthScore": health_score
     })
 
 @app.route("/recommendations", methods=["POST"])

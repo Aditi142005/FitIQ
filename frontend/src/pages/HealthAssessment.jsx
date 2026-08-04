@@ -6,10 +6,14 @@ import {
   updateUserProfile,
   getUserProfile
 } from "../services/firestoreService";
+import { useLocation } from "react-router-dom";
 function HealthAssessment() {
 const navigate = useNavigate();
   const [step,setStep] = useState(1);
+const location = useLocation();
 
+const isUpdateMode =
+  new URLSearchParams(location.search).get("update") === "true";
 
   const [healthData,setHealthData] = useState({
 
@@ -110,7 +114,7 @@ const validateStep = () => {
 
 
         <h1 className="text-3xl font-heading font-bold mb-2">
-          Health Assessment
+          {isUpdateMode ? "Update Health Assessment" : "Complete Health Assessment"}
         </h1>
 
 
@@ -361,10 +365,23 @@ const analysisResponse = await axios.post(
     gender: profile.gender,
     height: Number(profile.height),
     weight: Number(profile.weight),
-    activityLevel: profile.activityLevel
+    activityLevel: profile.activityLevel,
+
+    sleepHours: Number(healthData.sleepHours),
+    waterIntake: Number(healthData.waterIntake),
+    dailySteps: Number(healthData.dailySteps),
+    exerciseFrequency: Number(healthData.exerciseFrequency),
+    stressLevel: Number(healthData.stressLevel)
   }
 );
+console.log(analysisResponse.data);
+await updateUserProfile(user.uid, {
+  bodyAnalysis: analysisResponse.data,
+  healthAssessment: healthData
+});
 
+
+navigate("/dashboard");
 const bodyAnalysis = analysisResponse.data;
 
 console.log(bodyAnalysis);
@@ -403,7 +420,9 @@ console.log(bodyAnalysis);
     }}
     className="bg-primary text-white px-6 py-3 rounded-xl ml-auto"
   >
-    {step === 3 ? "Complete Assessment" : "Next"}
+    {step === 3 
+  ? (isUpdateMode ? "Update Assessment" : "Complete Assessment") 
+  : "Next"}
   </button>
 
 </div>

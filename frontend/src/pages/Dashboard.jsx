@@ -224,7 +224,12 @@ const healthScore = calculateHealthScore();
     ? "Needs Improvement"
     : "Poor"}
 </p>
-
+ <button
+    onClick={() => navigate("/health-assessment?update=true")}
+    className="bg-green-500 text-white px-5 py-3 rounded-xl mt-4"
+  >
+    Update Health Assessment
+  </button>
       <p className="text-textSecondary mt-2">
         Based on your lifestyle and fitness habits
       </p>
