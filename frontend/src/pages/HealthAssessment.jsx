@@ -375,13 +375,7 @@ const analysisResponse = await axios.post(
   }
 );
 console.log(analysisResponse.data);
-await updateUserProfile(user.uid, {
-  bodyAnalysis: analysisResponse.data,
-  healthAssessment: healthData
-});
 
-
-navigate("/dashboard");
 const bodyAnalysis = analysisResponse.data;
 
 console.log(bodyAnalysis);

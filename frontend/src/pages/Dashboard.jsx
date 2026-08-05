@@ -83,73 +83,7 @@ else{
   const [activePage, setActivePage] = useState("dashboard");
   const [profile, setProfile] = useState(null);
 
-const calculateHealthScore = () => {
-
-  if (!profile) return 0;
-
-  let score = 100;
-
-  // BMI score
-  const bmi = profile.bodyAnalysis?.bmi;
-
-  if (bmi < 18.5 || bmi >= 30) {
-    score -= 15;
-  } 
-  else if (bmi >= 25) {
-    score -= 10;
-  }
-
-
-  // Sleep score
-  if (profile.sleepHours < 6) {
-    score -= 15;
-  }
-  else if (profile.sleepHours < 7) {
-    score -= 5;
-  }
-
-
-  // Water score
-  if (profile.waterIntake < 2) {
-    score -= 10;
-  }
-
-
-  // Activity score
-  if (profile.dailySteps < 5000) {
-    score -= 10;
-  }
-  else if (profile.dailySteps >= 10000) {
-    score += 5;
-  }
-
-
-  // Exercise frequency
-  if (profile.exerciseFrequency === 0) {
-    score -= 15;
-  }
-  else if (profile.exerciseFrequency >= 4) {
-    score += 5;
-  }
-
-
-  // Stress
-  if (profile.stressLevel >= 8) {
-    score -= 10;
-  }
-
-
-  // Energy
-  if (profile.energyLevel >= 8) {
-    score += 5;
-  }
-
-
-  return Math.min(Math.max(score,0),100);
-
-};
-
-const healthScore = calculateHealthScore();
+const healthScore = profile?.bodyAnalysis?.healthScore || 0;
 
   useEffect(() => {
     async function fetchProfile() {

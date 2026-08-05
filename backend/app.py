@@ -57,6 +57,7 @@ def body_analysis():
 }
 
     health_score = calculate_health_score(health_data)
+    print("Health Data Received:", health_data)
     return jsonify({
         "bmi": bmi,
         "category": category,
