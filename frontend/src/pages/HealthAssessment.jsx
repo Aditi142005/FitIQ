@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase/firebase";
@@ -34,6 +34,46 @@ const isUpdateMode =
 
   });
 
+useEffect(() => {
+
+  async function loadAssessmentData(){
+
+    if(!isUpdateMode) return;
+
+    const user = auth.currentUser;
+
+    if(!user) return;
+
+    const profile = await getUserProfile(user.uid);
+
+    if(profile){
+
+     setHealthData({
+
+  sleepHours: profile.healthAssessment?.sleepHours || "",
+  waterIntake: profile.healthAssessment?.waterIntake || "",
+  dailySteps: profile.healthAssessment?.dailySteps || "",
+  exerciseFrequency: profile.healthAssessment?.exerciseFrequency || "",
+
+  medicalConditions: profile.healthAssessment?.medicalConditions || "",
+  smoking: profile.healthAssessment?.smoking || "",
+  alcohol: profile.healthAssessment?.alcohol || "",
+
+  mealsPerDay: profile.healthAssessment?.mealsPerDay || "",
+  allergies: profile.healthAssessment?.allergies || "",
+
+  stressLevel: profile.healthAssessment?.stressLevel || "",
+  energyLevel: profile.healthAssessment?.energyLevel || ""
+
+});
+
+    }
+
+  }
+
+  loadAssessmentData();
+
+}, [isUpdateMode]);
 
 const handleChange = (e) => {
   const { name, value, type, min, max } = e.target;
@@ -205,6 +245,7 @@ const validateStep = () => {
       <textarea
       name="medicalConditions"
       placeholder="Medical Conditions (optional)"
+      value={healthData.medicalConditions}
       onChange={handleChange}
       className="w-full border p-3 rounded mb-3"
       />
@@ -212,6 +253,7 @@ const validateStep = () => {
 
       <select
       name="smoking"
+      value={healthData.smoking}
       onChange={handleChange}
       className="w-full border p-3 rounded mb-3"
       >
@@ -234,6 +276,7 @@ const validateStep = () => {
 
       <select
       name="alcohol"
+      value={healthData.alcohol}
       onChange={handleChange}
       className="w-full border p-3 rounded mb-3"
       >
@@ -286,6 +329,7 @@ const validateStep = () => {
       <input
       name="allergies"
       placeholder="Food allergies (optional)"
+      value={healthData.allergies}
       onChange={handleChange}
       className="w-full border p-3 rounded mb-3"
       />
