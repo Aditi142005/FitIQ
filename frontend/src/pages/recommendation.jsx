@@ -38,13 +38,15 @@ function Recommendation() {
       const response = await axios.post(
         "http://127.0.0.1:5000/recommendations",
         {
-          bmi: profile.bodyAnalysis?.bmi,
-          sleepHours: profile.sleepHours,
-          waterIntake: profile.waterIntake,
-          dailySteps: profile.dailySteps,
-          exerciseFrequency: profile.exerciseFrequency,
-          goal: profile.goal
-        }
+  bmi: profile.bodyAnalysis?.bmi,
+  sleepHours: profile.sleepHours,
+  waterIntake: profile.waterIntake,
+  dailySteps: profile.dailySteps,
+  exerciseFrequency: profile.exerciseFrequency,
+  stressLevel: profile.stressLevel,
+  energyLevel: profile.energyLevel,
+  goal: profile.goal
+}
       );
 
 
