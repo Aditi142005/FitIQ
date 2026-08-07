@@ -3,9 +3,24 @@ import {
   setDoc,
   updateDoc,
   getDoc,
+  collection,
+  addDoc,
   serverTimestamp
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
+export async function addHealthHistory(uid, healthData) {
+  const historyRef = collection(
+    db,
+    "users",
+    uid,
+    "healthHistory"
+  );
+
+  await addDoc(historyRef, {
+    ...healthData,
+    recordedAt: serverTimestamp()
+  });
+}
 export async function updateDailyGoals(uid, goals) {
 
   const userRef = doc(db, "users", uid);

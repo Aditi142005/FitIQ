@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase/firebase";
-import { 
+import {
   updateUserProfile,
-  getUserProfile
+  getUserProfile,
+  addHealthHistory
 } from "../services/firestoreService";
 import { useLocation } from "react-router-dom";
 function HealthAssessment() {
@@ -426,20 +427,52 @@ console.log(bodyAnalysis);
 
     await updateUserProfile(user.uid, {
 
-      ...healthData,
+  sleepHours: Number(healthData.sleepHours),
+  waterIntake: Number(healthData.waterIntake),
+  dailySteps: Number(healthData.dailySteps),
+  exerciseFrequency: Number(healthData.exerciseFrequency),
+  mealsPerDay: Number(healthData.mealsPerDay),
+  stressLevel: Number(healthData.stressLevel),
+  energyLevel: Number(healthData.energyLevel),
 
-      sleepHours: Number(healthData.sleepHours),
-      waterIntake: Number(healthData.waterIntake),
-      dailySteps: Number(healthData.dailySteps),
-      exerciseFrequency: Number(healthData.exerciseFrequency),
-      mealsPerDay: Number(healthData.mealsPerDay),
-      stressLevel: Number(healthData.stressLevel),
-      energyLevel: Number(healthData.energyLevel),
+  healthAssessment: {
+    ...healthData,
+    sleepHours: Number(healthData.sleepHours),
+    waterIntake: Number(healthData.waterIntake),
+    dailySteps: Number(healthData.dailySteps),
+    exerciseFrequency: Number(healthData.exerciseFrequency),
+    mealsPerDay: Number(healthData.mealsPerDay),
+    stressLevel: Number(healthData.stressLevel),
+    energyLevel: Number(healthData.energyLevel)
+  },
 
- bodyAnalysis,
-      healthAssessmentCompleted: true
+  bodyAnalysis,
+  healthAssessmentCompleted: true
 
-    });
+});
+    console.log("Saving health history:", {
+  sleepHours: Number(healthData.sleepHours),
+  waterIntake: Number(healthData.waterIntake),
+  dailySteps: Number(healthData.dailySteps),
+  exerciseFrequency: Number(healthData.exerciseFrequency),
+  mealsPerDay: Number(healthData.mealsPerDay),
+  stressLevel: Number(healthData.stressLevel),
+  energyLevel: Number(healthData.energyLevel),
+  bmi: bodyAnalysis.bmi,
+  healthScore: bodyAnalysis.healthScore
+});
+    await addHealthHistory(user.uid, {
+  sleepHours: Number(healthData.sleepHours),
+  waterIntake: Number(healthData.waterIntake),
+  dailySteps: Number(healthData.dailySteps),
+  exerciseFrequency: Number(healthData.exerciseFrequency),
+  mealsPerDay: Number(healthData.mealsPerDay),
+  stressLevel: Number(healthData.stressLevel),
+  energyLevel: Number(healthData.energyLevel),
+
+  bmi: bodyAnalysis.bmi,
+  healthScore: bodyAnalysis.healthScore
+});
 
     alert("Health Assessment Saved Successfully 🎉");
 
