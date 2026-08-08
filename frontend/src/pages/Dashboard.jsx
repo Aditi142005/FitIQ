@@ -95,6 +95,12 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
       const data = await getUserProfile(user.uid);
       console.log(data);
       setProfile(data);
+      setGoals(data.dailyGoals || {
+  water: false,
+  workout: false,
+  steps: false,
+  sleep: false
+});
       setStreak(data.streak || 0);
       setTodayCompleted(data.todayCompleted || false);
     }
