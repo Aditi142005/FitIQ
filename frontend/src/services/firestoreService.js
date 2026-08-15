@@ -5,6 +5,7 @@ import {
   getDoc,
   collection,
   addDoc,
+  getDocs,
   serverTimestamp
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
@@ -20,6 +21,22 @@ export async function addHealthHistory(uid, healthData) {
     ...healthData,
     recordedAt: serverTimestamp()
   });
+}
+export async function getHealthHistory(uid) {
+
+  const historyRef = collection(
+    db,
+    "users",
+    uid,
+    "healthHistory"
+  );
+
+  const snapshot = await getDocs(historyRef);
+
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
 }
 export async function updateDailyGoals(uid, goals) {
 

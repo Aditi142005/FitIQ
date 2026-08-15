@@ -9,7 +9,15 @@ import {
 import { useNavigate} from "react-router-dom";
 import { logout } from "../services/authService";
 import Sidebar from "../components/Sidebar";
+const getTodayDate = () => {
+  const today = new Date();
 
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 function Dashboard() {
   const [streak, setStreak] = useState(0);
   const [todayCompleted, setTodayCompleted] = useState(false);
@@ -86,28 +94,59 @@ else{
 const healthScore = profile?.bodyAnalysis?.healthScore || 0;
 
   useEffect(() => {
-    async function fetchProfile() {
 
-      const user = auth.currentUser;
+  async function fetchProfile() {
 
-      if (!user) return;
+    const user = auth.currentUser;
 
-      const data = await getUserProfile(user.uid);
-      console.log(data);
-      setProfile(data);
-      setGoals(data.dailyGoals || {
-  water: false,
-  workout: false,
-  steps: false,
-  sleep: false
-});
-      setStreak(data.streak || 0);
+    if (!user) return;
+
+    const data = await getUserProfile(user.uid);
+
+    if (!data) return;
+
+    console.log(data);
+
+    setProfile(data);
+
+    const today = getTodayDate();
+
+    const defaultGoals = {
+      water: false,
+      workout: false,
+      steps: false,
+      sleep: false
+    };
+
+    if (data.goalDate === today) {
+
+      // Same day → keep today's goals
+      setGoals(data.dailyGoals || defaultGoals);
       setTodayCompleted(data.todayCompleted || false);
+
+    } else {
+
+      // New day → reset goals
+      setGoals(defaultGoals);
+      setTodayCompleted(false);
+
+      await updateDailyGoals(
+        user.uid,
+        defaultGoals
+      );
+
+      await updateTodayCompletion(
+        user.uid,
+        false
+      );
     }
 
-    fetchProfile();
+    setStreak(data.streak || 0);
+  }
 
-  }, []);
+  fetchProfile();
+
+}, []);
  
   const handleLogout = async () => {
     try {
