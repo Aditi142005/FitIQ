@@ -38,6 +38,56 @@ export async function getHealthHistory(uid) {
     ...doc.data()
   }));
 }
+export async function saveDailyTracking(uid, trackingData) {
+
+  const today = new Date();
+
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  const date = `${year}-${month}-${day}`;
+
+  const trackingRef = doc(
+    db,
+    "users",
+    uid,
+    "dailyTracking",
+    date
+  );
+
+  await setDoc(trackingRef, {
+    ...trackingData,
+    date,
+    recordedAt: serverTimestamp()
+  });
+}
+export async function getDailyTracking(uid) {
+
+  const today = new Date();
+
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  const date = `${year}-${month}-${day}`;
+
+  const trackingRef = doc(
+    db,
+    "users",
+    uid,
+    "dailyTracking",
+    date
+  );
+
+  const trackingSnap = await getDoc(trackingRef);
+
+  if (trackingSnap.exists()) {
+    return trackingSnap.data();
+  }
+
+  return null;
+}
 export async function updateDailyGoals(uid, goals) {
 
   const userRef = doc(db, "users", uid);

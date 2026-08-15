@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import DailyTracking from "./DailyTracking";
 import Recommendation from "./recommendation";
 import { auth } from "../firebase/firebase";
-import { 
+import {
   getUserProfile,
   updateDailyGoals,
-  updateTodayCompletion
+  updateTodayCompletion,
+  getDailyTracking
 } from "../services/firestoreService";
 import { useNavigate} from "react-router-dom";
 import { logout } from "../services/authService";
@@ -21,6 +23,7 @@ const getTodayDate = () => {
 function Dashboard() {
   const [streak, setStreak] = useState(0);
   const [todayCompleted, setTodayCompleted] = useState(false);
+  const [dailyTrackingRecorded, setDailyTrackingRecorded] = useState(false);
   const [goals, setGoals] = useState({
   water: false,
   workout: false,
@@ -108,7 +111,9 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
     console.log(data);
 
     setProfile(data);
+    const trackingData = await getDailyTracking(user.uid);
 
+setDailyTrackingRecorded(!!trackingData);
     const today = getTodayDate();
 
     const defaultGoals = {
@@ -184,7 +189,48 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
 
      {profile && (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 max-w-3xl mx-auto">
+     {/* Daily Check-in */}
 
+<div className="bg-white p-6 rounded-2xl shadow-card">
+
+  <h2 className="text-xl font-bold">
+    📅 Daily Check-in
+  </h2>
+
+  {dailyTrackingRecorded ? (
+
+    <>
+      <p className="text-green-600 font-semibold mt-4">
+        🟢 Recorded today
+      </p>
+
+      <p className="text-textSecondary mt-2">
+        Your daily health data has been recorded.
+      </p>
+    </>
+
+  ) : (
+
+    <>
+      <p className="text-orange-600 font-semibold mt-4">
+        ⚪ Not recorded today
+      </p>
+
+      <p className="text-textSecondary mt-2">
+        Complete today's tracking to keep your data up to date.
+      </p>
+
+      <button
+        onClick={() => setActivePage("tracking")}
+        className="bg-primary text-white px-5 py-3 rounded-xl mt-4"
+      >
+        Complete Today's Tracking
+      </button>
+    </>
+
+  )}
+
+</div>
     {/* Health Score */}
     <div className="bg-white p-6 rounded-2xl shadow-card">
       <h2 className="text-xl font-bold">
@@ -348,7 +394,7 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
   </p>
 
 </div>
-   
+  
   </div>
 )}
 
@@ -491,6 +537,9 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
       Workout
     </h1>
   )}
+  {activePage === "tracking" && (
+  <DailyTracking />
+)}
 
 {activePage === "recommendations" && (
    <Recommendation />
