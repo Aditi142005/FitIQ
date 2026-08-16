@@ -88,6 +88,24 @@ export async function getDailyTracking(uid) {
 
   return null;
 }
+export async function getWeeklyTracking(uid) {
+
+  const trackingRef = collection(
+    db,
+    "users",
+    uid,
+    "dailyTracking"
+  );
+
+  const snapshot = await getDocs(trackingRef);
+
+  const records = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
+  return records;
+}
 export async function updateDailyGoals(uid, goals) {
 
   const userRef = doc(db, "users", uid);

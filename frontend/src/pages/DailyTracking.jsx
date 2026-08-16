@@ -74,36 +74,113 @@ if (data) {
 
   const handleSave = async () => {
 
-    try {
+  try {
 
-      const user = auth.currentUser;
+    const user = auth.currentUser;
 
-      if (!user) {
-        alert("No user logged in.");
-        return;
-      }
-
-      await saveDailyTracking(user.uid, {
-        steps: Number(trackingData.steps),
-        waterIntake: Number(trackingData.waterIntake),
-        sleepHours: Number(trackingData.sleepHours),
-        exerciseMinutes: Number(trackingData.exerciseMinutes),
-        caloriesConsumed: Number(trackingData.caloriesConsumed),
-        stressLevel: Number(trackingData.stressLevel),
-        energyLevel: Number(trackingData.energyLevel),
-        workoutCompleted: trackingData.workoutCompleted
-      });
-      setIsRecorded(true);
-      alert("Today's tracking data saved 🎉");
-
-    } catch (error) {
-
-      console.error(error);
-      alert(error.message);
-
+    if (!user) {
+      alert("No user logged in.");
+      return;
     }
 
-  };
+    // Check required fields
+    if (
+      trackingData.steps === "" ||
+      trackingData.waterIntake === "" ||
+      trackingData.sleepHours === "" ||
+      trackingData.exerciseMinutes === "" ||
+      trackingData.caloriesConsumed === "" ||
+      trackingData.stressLevel === "" ||
+      trackingData.energyLevel === ""
+    ) {
+      alert("Please complete all required daily tracking fields.");
+      return;
+    }
+
+    // Convert values to numbers
+    const steps = Number(trackingData.steps);
+    const waterIntake = Number(trackingData.waterIntake);
+    const sleepHours = Number(trackingData.sleepHours);
+    const exerciseMinutes = Number(trackingData.exerciseMinutes);
+    const caloriesConsumed = Number(trackingData.caloriesConsumed);
+    const stressLevel = Number(trackingData.stressLevel);
+    const energyLevel = Number(trackingData.energyLevel);
+
+    // Check negative values
+    if (
+      steps < 0 ||
+      waterIntake < 0 ||
+      sleepHours < 0 ||
+      exerciseMinutes < 0 ||
+      caloriesConsumed < 0
+    ) {
+      alert("Values cannot be negative.");
+      return;
+    }
+
+    // Check stress and energy range
+    if (
+      stressLevel < 1 ||
+      stressLevel > 5 ||
+      energyLevel < 1 ||
+      energyLevel > 5
+    ) {
+      alert("Stress and energy levels must be between 1 and 5.");
+      return;
+    }
+
+    // Check realistic limits
+    if (sleepHours > 24) {
+      alert("Sleep hours cannot exceed 24 hours.");
+      return;
+    }
+
+    if (waterIntake > 20) {
+      alert("Please enter a realistic water intake.");
+      return;
+    }
+
+    if (steps > 100000) {
+      alert("Please enter a realistic step count.");
+      return;
+    }
+
+    if (exerciseMinutes > 1440) {
+      alert("Exercise duration cannot exceed 24 hours.");
+      return;
+    }
+
+    if (caloriesConsumed > 10000) {
+      alert("Please enter a realistic calorie value.");
+      return;
+    }
+
+    await saveDailyTracking(user.uid, {
+      steps,
+      waterIntake,
+      sleepHours,
+      exerciseMinutes,
+      caloriesConsumed,
+      stressLevel,
+      energyLevel,
+      workoutCompleted: trackingData.workoutCompleted
+    });
+
+    setIsRecorded(true);
+
+    // Notify Dashboard that today's tracking was saved
+    window.dispatchEvent(new Event("dailyTrackingUpdated"));
+
+    alert("Today's tracking data saved 🎉");
+
+  } catch (error) {
+
+    console.error(error);
+    alert(error.message);
+
+  }
+
+};
 
   if (loading) {
     return <p>Loading...</p>;
@@ -132,8 +209,10 @@ if (data) {
       <div className="bg-white p-6 rounded-2xl shadow-card max-w-xl mx-auto">
 
         <input
-          type="number"
-          name="steps"
+  type="number"
+  min="0"
+  max="100000"
+  name="steps"
           placeholder="Daily steps"
           value={trackingData.steps}
           onChange={handleChange}
@@ -141,9 +220,11 @@ if (data) {
         />
 
         <input
-          type="number"
-          step="0.1"
-          name="waterIntake"
+  type="number"
+  min="0"
+  max="20"
+  step="0.1"
+  name="waterIntake"
           placeholder="Water intake (litres)"
           value={trackingData.waterIntake}
           onChange={handleChange}
@@ -151,9 +232,11 @@ if (data) {
         />
 
         <input
-          type="number"
-          step="0.5"
-          name="sleepHours"
+  type="number"
+  min="0"
+  max="24"
+  step="0.5"
+  name="sleepHours"
           placeholder="Sleep hours"
           value={trackingData.sleepHours}
           onChange={handleChange}
@@ -161,8 +244,10 @@ if (data) {
         />
 
         <input
-          type="number"
-          name="exerciseMinutes"
+  type="number"
+  min="0"
+  max="1440"
+  name="exerciseMinutes"
           placeholder="Exercise duration (minutes)"
           value={trackingData.exerciseMinutes}
           onChange={handleChange}
@@ -170,8 +255,10 @@ if (data) {
         />
 
         <input
-          type="number"
-          name="caloriesConsumed"
+  type="number"
+  min="0"
+  max="10000"
+  name="caloriesConsumed"
           placeholder="Calories consumed"
           value={trackingData.caloriesConsumed}
           onChange={handleChange}

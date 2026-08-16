@@ -4,9 +4,10 @@ import Recommendation from "./recommendation";
 import { auth } from "../firebase/firebase";
 import {
   getUserProfile,
-  updateDailyGoals,
-  updateTodayCompletion,
-  getDailyTracking
+updateDailyGoals,
+updateTodayCompletion,
+getDailyTracking,
+getWeeklyTracking
 } from "../services/firestoreService";
 import { useNavigate} from "react-router-dom";
 import { logout } from "../services/authService";
@@ -24,6 +25,8 @@ function Dashboard() {
   const [streak, setStreak] = useState(0);
   const [todayCompleted, setTodayCompleted] = useState(false);
   const [dailyTrackingRecorded, setDailyTrackingRecorded] = useState(false);
+  const [trackingDays, setTrackingDays] = useState(0);
+const [trackingConsistency, setTrackingConsistency] = useState(0);
   const [goals, setGoals] = useState({
   water: false,
   workout: false,
@@ -114,7 +117,39 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
     const trackingData = await getDailyTracking(user.uid);
 
 setDailyTrackingRecorded(!!trackingData);
-    const today = getTodayDate();
+
+// Get tracking records
+const trackingRecords = await getWeeklyTracking(user.uid);
+
+// Calculate last 7 days
+const currentDate = new Date();
+
+const lastSevenDays = [];
+
+for (let i = 0; i < 7; i++) {
+
+  const date = new Date(currentDate);
+
+  date.setDate(currentDate.getDate() - i);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  lastSevenDays.push(`${year}-${month}-${day}`);
+}
+
+const recordedDays = trackingRecords.filter(record =>
+  lastSevenDays.includes(record.date)
+).length;
+
+setTrackingDays(recordedDays);
+
+setTrackingConsistency(
+  Math.round((recordedDays / 7) * 100)
+);
+
+const today = getTodayDate();
 
     const defaultGoals = {
       water: false,
@@ -150,7 +185,21 @@ setDailyTrackingRecorded(!!trackingData);
   }
 
   fetchProfile();
+const handleTrackingUpdate = () => {
+  fetchProfile();
+};
 
+window.addEventListener(
+  "dailyTrackingUpdated",
+  handleTrackingUpdate
+);
+
+return () => {
+  window.removeEventListener(
+    "dailyTrackingUpdated",
+    handleTrackingUpdate
+  );
+};
 }, []);
  
   const handleLogout = async () => {
@@ -189,7 +238,7 @@ setDailyTrackingRecorded(!!trackingData);
 
      {profile && (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 max-w-3xl mx-auto">
-     {/* Daily Check-in */}
+    {/* Daily Check-in */}
 
 <div className="bg-white p-6 rounded-2xl shadow-card">
 
@@ -229,6 +278,22 @@ setDailyTrackingRecorded(!!trackingData);
     </>
 
   )}
+
+  <div className="mt-6 pt-4 border-t">
+
+    <p className="font-semibold">
+      📊 Last 7 Days
+    </p>
+
+    <p className="text-2xl text-primary font-bold mt-2">
+      {trackingDays} / 7 days
+    </p>
+
+    <p className="text-textSecondary mt-1">
+      Tracking consistency: {trackingConsistency}%
+    </p>
+
+  </div>
 
 </div>
     {/* Health Score */}
