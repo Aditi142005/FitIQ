@@ -10,6 +10,7 @@ function DailyTracking() {
   steps: "",
   waterIntake: "",
   sleepHours: "",
+    sleepQuality: "",
   exerciseMinutes: "",
   caloriesConsumed: "",
   stressLevel: "",
@@ -39,6 +40,7 @@ if (data) {
     steps: data.steps || "",
     waterIntake: data.waterIntake || "",
     sleepHours: data.sleepHours || "",
+    sleepQuality: data.sleepQuality || "",
     exerciseMinutes: data.exerciseMinutes || "",
     caloriesConsumed: data.caloriesConsumed || "",
     stressLevel: data.stressLevel || "",
@@ -88,6 +90,7 @@ if (data) {
       trackingData.steps === "" ||
       trackingData.waterIntake === "" ||
       trackingData.sleepHours === "" ||
+      trackingData.sleepQuality === "" ||
       trackingData.exerciseMinutes === "" ||
       trackingData.caloriesConsumed === "" ||
       trackingData.stressLevel === "" ||
@@ -101,6 +104,7 @@ if (data) {
     const steps = Number(trackingData.steps);
     const waterIntake = Number(trackingData.waterIntake);
     const sleepHours = Number(trackingData.sleepHours);
+    const sleepQuality = Number(trackingData.sleepQuality);
     const exerciseMinutes = Number(trackingData.exerciseMinutes);
     const caloriesConsumed = Number(trackingData.caloriesConsumed);
     const stressLevel = Number(trackingData.stressLevel);
@@ -111,6 +115,7 @@ if (data) {
       steps < 0 ||
       waterIntake < 0 ||
       sleepHours < 0 ||
+      sleepQuality < 0 ||
       exerciseMinutes < 0 ||
       caloriesConsumed < 0
     ) {
@@ -120,14 +125,16 @@ if (data) {
 
     // Check stress and energy range
     if (
-      stressLevel < 1 ||
-      stressLevel > 5 ||
-      energyLevel < 1 ||
-      energyLevel > 5
-    ) {
-      alert("Stress and energy levels must be between 1 and 5.");
-      return;
-    }
+  stressLevel < 1 ||
+  stressLevel > 5 ||
+  energyLevel < 1 ||
+  energyLevel > 5 ||
+  sleepQuality < 1 ||
+  sleepQuality > 5
+) {
+  alert("Sleep quality, stress, and energy levels must be between 1 and 5.");
+  return;
+}
 
     // Check realistic limits
     if (sleepHours > 24) {
@@ -159,6 +166,7 @@ if (data) {
       steps,
       waterIntake,
       sleepHours,
+        sleepQuality,
       exerciseMinutes,
       caloriesConsumed,
       stressLevel,
@@ -242,7 +250,20 @@ if (data) {
           onChange={handleChange}
           className="w-full border p-3 rounded mb-3"
         />
+        <label className="block mb-2">
+  Sleep Quality (1-5)
+</label>
 
+<input
+  type="number"
+  min="1"
+  max="5"
+  name="sleepQuality"
+  placeholder="Sleep quality (1-5)"
+  value={trackingData.sleepQuality}
+  onChange={handleChange}
+  className="w-full border p-3 rounded mb-3"
+/>
         <input
   type="number"
   min="0"
