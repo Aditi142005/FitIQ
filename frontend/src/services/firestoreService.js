@@ -88,6 +88,48 @@ export async function getDailyTracking(uid) {
 
   return null;
 }
+export async function getLast7DaysTracking(uid) {
+
+  const trackingRef = collection(
+    db,
+    "users",
+    uid,
+    "dailyTracking"
+  );
+
+  const snapshot = await getDocs(trackingRef);
+
+  const records = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
+  const days = [];
+
+  for (let i = 6; i >= 0; i--) {
+
+    const date = new Date();
+
+    date.setDate(date.getDate() - i);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    const dateString = `${year}-${month}-${day}`;
+
+    const record = records.find(
+      item => item.date === dateString
+    );
+
+    days.push({
+      date: dateString,
+      recorded: !!record
+    });
+  }
+
+  return days;
+}
 export async function getWeeklyTracking(uid) {
 
   const trackingRef = collection(

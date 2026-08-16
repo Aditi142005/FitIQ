@@ -3,11 +3,12 @@ import DailyTracking from "./DailyTracking";
 import Recommendation from "./recommendation";
 import { auth } from "../firebase/firebase";
 import {
-  getUserProfile,
+ getUserProfile,
 updateDailyGoals,
 updateTodayCompletion,
 getDailyTracking,
-getWeeklyTracking
+getWeeklyTracking,
+getLast7DaysTracking
 } from "../services/firestoreService";
 import { useNavigate} from "react-router-dom";
 import { logout } from "../services/authService";
@@ -27,6 +28,7 @@ function Dashboard() {
   const [dailyTrackingRecorded, setDailyTrackingRecorded] = useState(false);
   const [trackingDays, setTrackingDays] = useState(0);
 const [trackingConsistency, setTrackingConsistency] = useState(0);
+const [last7DaysTracking, setLast7DaysTracking] = useState([]);
   const [goals, setGoals] = useState({
   water: false,
   workout: false,
@@ -120,7 +122,9 @@ setDailyTrackingRecorded(!!trackingData);
 
 // Get tracking records
 const trackingRecords = await getWeeklyTracking(user.uid);
+const last7Days = await getLast7DaysTracking(user.uid);
 
+setLast7DaysTracking(last7Days);
 // Calculate last 7 days
 const currentDate = new Date();
 
@@ -238,7 +242,7 @@ return () => {
 
      {profile && (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 max-w-3xl mx-auto">
-    {/* Daily Check-in */}
+   {/* Daily Check-in */}
 
 <div className="bg-white p-6 rounded-2xl shadow-card">
 
@@ -279,13 +283,46 @@ return () => {
 
   )}
 
+  {/* Last 7 Days */}
+
   <div className="mt-6 pt-4 border-t">
 
-    <p className="font-semibold">
+    <h3 className="font-bold mb-4">
       📊 Last 7 Days
-    </p>
+    </h3>
 
-    <p className="text-2xl text-primary font-bold mt-2">
+    <div className="grid grid-cols-7 gap-2">
+
+      {last7DaysTracking.map((day) => {
+
+        const date = new Date(`${day.date}T00:00:00`);
+
+        const dayName = date.toLocaleDateString("en-US", {
+          weekday: "short"
+        });
+
+        return (
+          <div
+            key={day.date}
+            className="text-center"
+          >
+
+            <p className="text-sm font-semibold">
+              {dayName}
+            </p>
+
+            <p className="text-xl mt-1">
+              {day.recorded ? "🟢" : "⚪"}
+            </p>
+
+          </div>
+        );
+
+      })}
+
+    </div>
+
+    <p className="text-2xl text-primary font-bold mt-5">
       {trackingDays} / 7 days
     </p>
 
