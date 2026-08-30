@@ -62,70 +62,76 @@ useEffect(() => {
   e.preventDefault();
 
   try {
-
     const user = auth.currentUser;
 
     if (!user) {
       alert("No user logged in.");
       return;
     }
-if(profile.height < 50 || profile.height > 250){
-  alert("Height must be between 50 and 250 cm");
+
+    if (profile.height < 50 || profile.height > 250) {
+      alert("Height must be between 50 and 250 cm");
+      return;
+    }
+
+    if (profile.weight < 20 || profile.weight > 300) {
+      alert("Weight must be between 20 and 300 kg");
+      return;
+    }
+
+    if (profile.age < 1 || profile.age > 120) {
+      alert("Please enter a valid age");
+      return;
+    }
+
+    if (
+      !profile.gender ||
+      !profile.goal ||
+      !profile.activityLevel ||
+      !profile.dietPreference
+    ) {
+      alert("Please complete all profile details.");
+      return;
+    }
+
+    // Save profile data
+    await updateUserProfile(user.uid, {
+      ...profile,
+      age: Number(profile.age),
+      height: Number(profile.height),
+      weight: Number(profile.weight),
+    });
+
+    // Edit Profile from Dashboard
+    // Only update profile and return to Dashboard.
+    if (isEditMode) {
+  alert("Profile updated successfully! 🎉");
+  navigate("/dashboard");
   return;
 }
 
-if(profile.weight < 20 || profile.weight > 300){
-  alert("Weight must be between 20 and 300 kg");
-  return;
-}
+    // New user: calculate body analysis
+    const response = await axios.post(
+      "http://127.0.0.1:5000/body-analysis",
+      {
+        age: Number(profile.age),
+        gender: profile.gender,
+        height: Number(profile.height),
+        weight: Number(profile.weight),
+        activityLevel: profile.activityLevel,
+      }
+    );
 
-if(profile.age < 1 || profile.age > 120){
-  alert("Please enter a valid age");
-  return;
-}
-if (
-  !profile.gender ||
-  !profile.goal ||
-  !profile.activityLevel ||
-  !profile.dietPreference
-) {
-  alert("Please complete all profile details.");
-  return;
-}
-    // First save the updated profile
-await updateUserProfile(user.uid, {
-  ...profile,
-  age: Number(profile.age),
-  height: Number(profile.height),
-  weight: Number(profile.weight),
-});
-
-// Then recalculate body analysis
-const response = await axios.post(
-  "http://127.0.0.1:5000/body-analysis",
-  {
-    age: Number(profile.age),
-    gender: profile.gender,
-    height: Number(profile.height),
-    weight: Number(profile.weight),
-    activityLevel: profile.activityLevel,
-  }
-);
-
-// Save the new body analysis to Firestore
-await updateUserProfile(user.uid, {
-  bodyAnalysis: response.data,
-});
+    // Save body analysis for new profile
+    await updateUserProfile(user.uid, {
+      bodyAnalysis: response.data,
+    });
 
     alert("Profile saved successfully! 🎉");
-
-if (isEditMode) {
-  navigate("/dashboard");
-} else {
-  navigate("/health-assessment");
-}
+    navigate("/health-assessment");
 
   } catch (error) {
+    console.error("Profile save error:", error);
     alert(error.message);
   }
 };
