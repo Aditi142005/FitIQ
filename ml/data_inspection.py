@@ -145,3 +145,113 @@ print(records_per_participant.nsmallest(10))
 
 print("\nParticipants with most records:")
 print(records_per_participant.nlargest(10))
+
+print("\n--- HEALTH CONDITION ANALYSIS ---")
+
+print("Health condition counts:")
+print(df["health_condition"].value_counts(dropna=False))
+
+print("\nHealth condition percentages:")
+print(df["health_condition"].value_counts(normalize=True, dropna=False) * 100)
+
+print("\n--- MISSING DAILY STEPS ---")
+
+print(
+    df[df["daily_steps"].isna()][
+        [
+            "participant_id",
+            "date",
+            "daily_steps",
+            "hours_sleep",
+            "stress_level",
+            "activity_type",
+            "duration_minutes",
+            "calories_burned"
+        ]
+    ]
+)
+
+print("\n--- HEART RATE ANOMALY CHECK ---")
+
+print(
+    df[df["heart_rate_anomaly_flag"] == 1][
+        [
+            "participant_id",
+            "date",
+            "avg_heart_rate",
+            "activity_type",
+            "duration_minutes",
+            "intensity"
+        ]
+    ]
+)
+
+print("\n--- SYSTOLIC BP ANOMALY COMPARISON ---")
+
+print("Overall systolic BP:")
+print(df["blood_pressure_systolic"].describe())
+
+print("\nParticipant 58 systolic BP:")
+print(df[df["participant_id"] == 58]["blood_pressure_systolic"].describe())
+
+print("\nFlagged systolic BP values:")
+print(
+    df[df["systolic_anomaly_flag"] == 1]["blood_pressure_systolic"].value_counts()
+)
+
+print("\n--- CATEGORICAL FEATURE ANALYSIS ---")
+
+categorical_columns = [
+    "gender",
+    "activity_type",
+    "intensity",
+    "health_condition",
+    "smoking_status"
+]
+
+for column in categorical_columns:
+    print(f"\n{column}:")
+    print(df[column].value_counts(dropna=False))
+
+    print("\n--- NUMERICAL FEATURE RANGES ---")
+
+numerical_columns = [
+    "age",
+    "height_cm",
+    "weight_kg",
+    "duration_minutes",
+    "calories_burned",
+    "avg_heart_rate",
+    "hours_sleep",
+    "stress_level",
+    "daily_steps",
+    "hydration_level",
+    "bmi",
+    "resting_heart_rate",
+    "blood_pressure_systolic",
+    "blood_pressure_diastolic",
+    "fitiq_bmi"
+]
+
+print(df[numerical_columns].describe().T[
+    ["min", "max", "mean", "std"]
+])
+
+print("\n--- BMI TEMPORAL CHECK ---")
+
+participant_id = 1
+
+participant = df[df["participant_id"] == participant_id].sort_values("date")
+
+print(
+    participant[
+        [
+            "date",
+            "height_cm",
+            "weight_kg",
+            "bmi_original",
+            "bmi",
+            "fitiq_bmi"
+        ]
+    ].head(20)
+)
