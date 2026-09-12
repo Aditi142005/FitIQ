@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import DailyTracking from "./DailyTracking";
 import Recommendation from "./recommendation";
 import { auth } from "../firebase/firebase";
+import { prepareFisInput } from "../services/fisService";
 import {
  getUserProfile,
 updateDailyGoals,
@@ -110,7 +111,7 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
     if (!user) return;
 
     const data = await getUserProfile(user.uid);
-
+console.log("PROFILE DATA FROM FIRESTORE:", data);
     if (!data) return;
 
     console.log(data);
@@ -122,6 +123,9 @@ setDailyTrackingRecorded(!!trackingData);
 
 // Get tracking records
 const trackingRecords = await getWeeklyTracking(user.uid);
+console.log("FIS TRACKING RECORDS:", trackingRecords);
+const fisInput = prepareFisInput(data, trackingRecords);
+console.log("FIS INPUT:", fisInput);
 const last7Days = await getLast7DaysTracking(user.uid);
 
 setLast7DaysTracking(last7Days);

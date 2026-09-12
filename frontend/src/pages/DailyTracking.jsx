@@ -12,6 +12,7 @@ function DailyTracking() {
   sleepHours: "",
     sleepQuality: "",
   exerciseMinutes: "",
+  exerciseIntensity: "",
   caloriesConsumed: "",
   stressLevel: "",
   energyLevel: "",
@@ -37,15 +38,16 @@ const [loading, setLoading] = useState(true);
 if (data) {
 
   setTrackingData({
-    steps: data.steps || "",
-    waterIntake: data.waterIntake || "",
-    sleepHours: data.sleepHours || "",
-    sleepQuality: data.sleepQuality || "",
-    exerciseMinutes: data.exerciseMinutes || "",
-    caloriesConsumed: data.caloriesConsumed || "",
-    stressLevel: data.stressLevel || "",
-    energyLevel: data.energyLevel || "",
-    workoutCompleted: data.workoutCompleted || false
+    steps: data?.steps || "",
+    waterIntake: data?.waterIntake || "",
+    sleepHours: data?.sleepHours || "",
+    sleepQuality: data?.sleepQuality || "",
+    exerciseMinutes: data?.exerciseMinutes || "",
+    exerciseIntensity: data?.exerciseIntensity || "",
+    caloriesConsumed: data?.caloriesConsumed || "",
+    stressLevel: data?.stressLevel || "",
+    energyLevel: data?.energyLevel || "",
+    workoutCompleted: data?.workoutCompleted || false
   });
 
   setIsRecorded(true);
@@ -92,6 +94,7 @@ if (data) {
       trackingData.sleepHours === "" ||
       trackingData.sleepQuality === "" ||
       trackingData.exerciseMinutes === "" ||
+      trackingData.exerciseIntensity === "" ||
       trackingData.caloriesConsumed === "" ||
       trackingData.stressLevel === "" ||
       trackingData.energyLevel === ""
@@ -106,6 +109,7 @@ if (data) {
     const sleepHours = Number(trackingData.sleepHours);
     const sleepQuality = Number(trackingData.sleepQuality);
     const exerciseMinutes = Number(trackingData.exerciseMinutes);
+    const exerciseIntensity = trackingData.exerciseIntensity;
     const caloriesConsumed = Number(trackingData.caloriesConsumed);
     const stressLevel = Number(trackingData.stressLevel);
     const energyLevel = Number(trackingData.energyLevel);
@@ -156,7 +160,10 @@ if (data) {
       alert("Exercise duration cannot exceed 24 hours.");
       return;
     }
-
+    if (exerciseIntensity && !["Low", "Medium", "High"].includes(exerciseIntensity)) {
+      alert("Please select a valid exercise intensity: Low, Medium, or High.");
+      return;
+    }
     if (caloriesConsumed > 10000) {
       alert("Please enter a realistic calorie value.");
       return;
@@ -168,6 +175,7 @@ if (data) {
       sleepHours,
         sleepQuality,
       exerciseMinutes,
+      exerciseIntensity,
       caloriesConsumed,
       stressLevel,
       energyLevel,
@@ -274,7 +282,17 @@ if (data) {
           onChange={handleChange}
           className="w-full border p-3 rounded mb-3"
         />
-
+<select
+  name="exerciseIntensity"
+  value={trackingData.exerciseIntensity}
+  onChange={handleChange}
+  className="w-full border p-3 rounded mb-3"
+>
+  <option value="">Select exercise intensity</option>
+  <option value="Low">Low</option>
+  <option value="Medium">Medium</option>
+  <option value="High">High</option>
+</select>
         <input
   type="number"
   min="0"
