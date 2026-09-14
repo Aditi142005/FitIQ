@@ -10,7 +10,7 @@ if (profile?.goal === "Weight Loss") {
 } else if (profile?.goal === "Maintain Fitness") {
   fisGoal = "maintain";
 }
-
+const recentTrackingRecords = (trackingRecords || []).slice(-7);
 const convertEnergyLevel = (energyLevel) => {
   if (energyLevel === null || energyLevel === undefined) {
     return null;
@@ -26,13 +26,12 @@ const convertEnergyLevel = (energyLevel) => {
 };
 
 
-const exerciseDays = (trackingRecords || []).filter(
+const exerciseDays = recentTrackingRecords.filter(
   (record) =>
     record?.workoutCompleted === true ||
     Number(record?.exerciseMinutes || 0) > 0
 ).length;
-
-const exerciseDurations = (trackingRecords || [])
+const exerciseDurations = recentTrackingRecords
   .map((record) => Number(record?.exerciseMinutes))
   .filter((minutes) => !isNaN(minutes) && minutes >= 0);
 
@@ -43,7 +42,7 @@ const averageExerciseDuration =
     : null;
 
 
-    const stepValues = (trackingRecords || [])
+    const stepValues = recentTrackingRecords
   .map((record) => Number(record?.steps))
   .filter((steps) => !isNaN(steps) && steps >= 0);
 
@@ -52,7 +51,7 @@ const averageSteps =
     ? stepValues.reduce((sum, steps) => sum + steps, 0) / stepValues.length
     : null;
 
-    const sleepValues = (trackingRecords || [])
+   const sleepValues = recentTrackingRecords
   .map((record) => Number(record?.sleepHours))
   .filter((hours) => !isNaN(hours) && hours >= 0);
 
@@ -61,7 +60,7 @@ const averageSleepHours =
     ? sleepValues.reduce((sum, hours) => sum + hours, 0) / sleepValues.length
     : null;
 
-    const waterValues = (trackingRecords || [])
+    const waterValues = recentTrackingRecords
   .map((record) => Number(record?.waterIntake))
   .filter((liters) => !isNaN(liters) && liters >= 0);
 
@@ -70,7 +69,7 @@ const averageWaterIntake =
     ? waterValues.reduce((sum, liters) => sum + liters, 0) / waterValues.length
     : null;
 
-    const dailyConsistency = (trackingRecords || []).map((record) => {
+    const dailyConsistency = recentTrackingRecords.map((record) => {
   const stepsMet = Number(record?.steps || 0) >= 7500;
 
   const exerciseMet =
@@ -108,7 +107,7 @@ const averageWaterIntake =
     dailyConsistency,
   },
 
-  trackingRecords: (trackingRecords || []).map((record) => ({
+  trackingRecords: recentTrackingRecords.map((record) => ({
     date: record?.id ?? null,
     steps: record?.steps ?? null,
     exerciseMinutes: record?.exerciseMinutes ?? null,
@@ -120,3 +119,18 @@ const averageWaterIntake =
     workoutCompleted: record?.workoutCompleted ?? false
   }))
 };}
+export const calculateFis = async (fisInput) => {
+  const response = await fetch(`${API_URL}/fis`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(fisInput),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to calculate FIS");
+  }
+
+  return await response.json();
+};

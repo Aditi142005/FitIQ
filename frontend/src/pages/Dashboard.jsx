@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import DailyTracking from "./DailyTracking";
 import Recommendation from "./recommendation";
 import { auth } from "../firebase/firebase";
-import { prepareFisInput } from "../services/fisService";
+import { prepareFisInput, calculateFis } from "../services/fisService";
 import {
  getUserProfile,
 updateDailyGoals,
@@ -126,6 +126,9 @@ const trackingRecords = await getWeeklyTracking(user.uid);
 console.log("FIS TRACKING RECORDS:", trackingRecords);
 const fisInput = prepareFisInput(data, trackingRecords);
 console.log("FIS INPUT:", fisInput);
+const fisResult = await calculateFis(fisInput);
+
+console.log("FIS RESULT:", fisResult);
 const last7Days = await getLast7DaysTracking(user.uid);
 
 setLast7DaysTracking(last7Days);

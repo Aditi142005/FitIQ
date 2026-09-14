@@ -498,7 +498,7 @@ print(
 print(
     "Consistency Score:",
     calculate_consistency_from_history([])
-)"""
+)
 
 print(
     "FIS Score:",
@@ -542,4 +542,4 @@ print(
         None,
         None
     )
-)
+)"""
