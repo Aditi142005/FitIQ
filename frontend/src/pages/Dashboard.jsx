@@ -14,6 +14,7 @@ getLast7DaysTracking
 import { useNavigate} from "react-router-dom";
 import { logout } from "../services/authService";
 import Sidebar from "../components/Sidebar";
+import { analyzeBehavior } from "../services/behaviorService";
 const getTodayDate = () => {
   const today = new Date();
 
@@ -36,6 +37,8 @@ const [last7DaysTracking, setLast7DaysTracking] = useState([]);
   steps: false,
   sleep: false
 });
+const [fisResult, setFisResult] = useState(null);
+const [behaviorResult, setBehaviorResult] = useState(null);
 const toggleGoal = async (goal) => {
 
   const updatedGoals = {
@@ -124,11 +127,18 @@ setDailyTrackingRecorded(!!trackingData);
 // Get tracking records
 const trackingRecords = await getWeeklyTracking(user.uid);
 console.log("FIS TRACKING RECORDS:", trackingRecords);
+const behaviorData = await analyzeBehavior(trackingRecords);
+
+console.log("BEHAVIOR RESULT:", behaviorData);
+
+setBehaviorResult(behaviorData);
 const fisInput = prepareFisInput(data, trackingRecords);
 console.log("FIS INPUT:", fisInput);
-const fisResult = await calculateFis(fisInput);
+const fisData = await calculateFis(fisInput);
 
-console.log("FIS RESULT:", fisResult);
+console.log("FIS RESULT:", fisData);
+
+setFisResult(fisData);
 const last7Days = await getLast7DaysTracking(user.uid);
 
 setLast7DaysTracking(last7Days);
@@ -516,38 +526,284 @@ return () => {
       📊 Analytics
     </h1>
 
-    {profile?.bodyAnalysis && (
-      <div className="bg-white p-6 rounded-2xl shadow-card max-w-md mx-auto">
+    <div className="max-w-4xl mx-auto space-y-6">
 
-        <h2 className="text-2xl font-bold mb-4">
-          Body Analysis
-        </h2>
+      {/* ================= FIS ================= */}
+      {fisResult && (
+        <>
+          {/* Fitness Score */}
+          <div className="bg-white p-8 rounded-2xl shadow-card">
 
-        <p>
-          <strong>BMI:</strong> {profile.bodyAnalysis.bmi}
-        </p>
+            <h2 className="text-2xl font-bold">
+              ❤️ Your Fitness Score
+            </h2>
 
-        <p>
-          <strong>Category:</strong> {profile.bodyAnalysis.category}
-        </p>
+            <p className="text-6xl font-bold text-primary mt-5">
+              {fisResult.fis}/100
+            </p>
 
-        <p>
-          <strong>BMR:</strong> {profile.bodyAnalysis.bmr} kcal/day
-        </p>
+            <p className="text-textSecondary mt-3">
+              Your score reflects your activity, recovery, body
+              composition, nutrition, and consistency.
+            </p>
 
-        <p>
-          <strong>TDEE:</strong> {profile.bodyAnalysis.tdee} kcal/day
-        </p>
+            <p className="mt-4 font-medium">
+              {fisResult.fis >= 80
+                ? "You're doing well! Keep maintaining your healthy habits."
+                : fisResult.fis >= 60
+                ? "You're on a good path. A little more consistency can help you improve."
+                : "There is room to improve. Focus on small, consistent healthy habits."
+              }
+            </p>
 
-        <p>
-          <strong>Ideal Weight:</strong>{" "}
-          {profile.bodyAnalysis.idealWeight.min} kg -
-          {profile.bodyAnalysis.idealWeight.max} kg
-        </p>
+          </div>
 
-      </div>
-    )}
 
+          {/* What is influencing your score */}
+          <div className="bg-white p-6 rounded-2xl shadow-card">
+
+            <h2 className="text-2xl font-bold mb-4">
+              📌 What’s influencing your score?
+            </h2>
+
+            <div className="space-y-3 text-textSecondary">
+
+              {fisResult.fitnessActivity?.score < 60 && (
+                <p>
+                  🏃 <strong>Activity:</strong> Increasing your daily
+                  movement and exercise consistency can help.
+                </p>
+              )}
+
+              {fisResult.recovery?.score < 60 && (
+                <p>
+                  😴 <strong>Recovery:</strong> Improving your sleep
+                  and recovery habits can support your fitness.
+                </p>
+              )}
+
+              {fisResult.nutrition?.score < 60 && (
+                <p>
+                  🥗 <strong>Nutrition:</strong> Staying consistent
+                  with hydration and meals can help.
+                </p>
+              )}
+
+              {fisResult.consistency?.score < 60 && (
+                <p>
+                  🔥 <strong>Consistency:</strong> Keeping up your
+                  healthy habits regularly can improve your score.
+                </p>
+              )}
+
+              {fisResult.bodyComposition?.score < 60 && (
+                <p>
+                  ⚖️ <strong>Body composition:</strong> Your current
+                  body metrics suggest that gradual, healthy progress
+                  may be beneficial.
+                </p>
+              )}
+
+              {fisResult.fitnessActivity?.score >= 60 &&
+                fisResult.recovery?.score >= 60 &&
+                fisResult.nutrition?.score >= 60 &&
+                fisResult.consistency?.score >= 60 &&
+                fisResult.bodyComposition?.score >= 60 && (
+                  <p>
+                    ✨ Your main fitness areas are currently in a good
+                    range. Keep maintaining your habits.
+                  </p>
+                )}
+
+            </div>
+
+          </div>
+        </>
+      )}
+
+
+      {/* ================= E2 ================= */}
+      {behaviorResult && (
+        <div className="bg-white p-6 rounded-2xl shadow-card">
+
+          <h2 className="text-2xl font-bold">
+            🧠 Behavioral Insights
+          </h2>
+
+          {behaviorResult.mode === "population" ? (
+            <>
+              <p className="text-textSecondary mt-3">
+                Your recent tracking is still limited, so FitIQ is
+                currently using patterns from general fitness data
+                to provide useful insights.
+              </p>
+
+              <div className="mt-5 space-y-3">
+
+                <p>
+                  😴 <strong>Sleep & Activity:</strong> General fitness
+                  data currently shows no clear relationship between
+                  sleep duration and daily activity.
+                </p>
+
+                <p>
+                  💧 <strong>Hydration & Exercise:</strong> General
+                  fitness data currently shows no clear relationship
+                  between hydration and exercise duration.
+                </p>
+
+              </div>
+
+              <div className="mt-5 p-4 rounded-xl bg-gray-50">
+                <p className="font-semibold">
+                  💡 Keep improving
+                </p>
+
+                <p className="text-textSecondary mt-1">
+                  Try to maintain a consistent sleep routine, stay
+                  hydrated, and keep your activity regular.
+                </p>
+              </div>
+
+              <p className="text-sm text-textSecondary mt-5">
+                🔒 These insights are not personalized yet. Keep
+                tracking your daily habits. Once FitIQ has enough of
+                your records, it will start identifying patterns
+                specifically from your own behavior.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-textSecondary mt-3">
+                Based on your recent tracking, FitIQ is identifying
+                patterns in your daily habits.
+              </p>
+
+              <div className="mt-5 space-y-3">
+
+                {behaviorResult.patterns
+                  ?.filter(
+                    (pattern) =>
+                      pattern.strength !== "Weak or no relationship" &&
+                      pattern.correlation !== null
+                  )
+                  .slice(0, 2)
+                  .map((pattern, index) => {
+
+                    const relationshipNames = {
+                      sleep_steps: "Sleep & Activity",
+                      sleep_exercise: "Sleep & Exercise",
+                      hydration_steps: "Hydration & Activity",
+                      hydration_exercise: "Hydration & Exercise"
+                    };
+
+                    const relationship =
+                      relationshipNames[pattern.relationship] ||
+                      pattern.relationship;
+
+                    const positive = pattern.correlation > 0;
+
+                    return (
+                      <p key={index}>
+                        {pattern.relationship.includes("sleep")
+                          ? "😴"
+                          : "💧"}{" "}
+                        <strong>{relationship}:</strong>{" "}
+                        Your recent tracking shows a{" "}
+                        {positive ? "positive" : "negative"} pattern
+                        between these habits.
+                      </p>
+                    );
+                  })}
+
+                {behaviorResult.patterns?.every(
+                  (pattern) =>
+                    pattern.strength === "Weak or no relationship" ||
+                    pattern.correlation === null
+                ) && (
+                  <p>
+                    📈 Your recent tracking does not show any strong
+                    behavioral patterns yet. Keep tracking to help
+                    FitIQ understand your habits better.
+                  </p>
+                )}
+
+              </div>
+
+              <div className="mt-5 p-4 rounded-xl bg-gray-50">
+                <p className="font-semibold">
+                  💡 Keep improving
+                </p>
+
+                <p className="text-textSecondary mt-1">
+                  Keep your sleep, hydration, exercise, and daily
+                  activity as consistent as possible. The more you
+                  track, the better FitIQ can understand your patterns.
+                </p>
+              </div>
+
+              <p className="text-sm text-textSecondary mt-5">
+                ✨ These insights are based on your own recent
+                tracking and become more meaningful as you continue
+                using FitIQ.
+              </p>
+            </>
+          )}
+
+        </div>
+      )}
+
+
+      {/* ================= BODY ANALYSIS ================= */}
+      {profile?.bodyAnalysis && (
+        <div className="bg-white p-6 rounded-2xl shadow-card">
+
+          <h2 className="text-2xl font-bold mb-4">
+            ⚖️ Body Analysis
+          </h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+            <div>
+              <p className="text-sm text-textSecondary">BMI</p>
+              <p className="font-bold">
+                {profile.bodyAnalysis.bmi}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-textSecondary">Category</p>
+              <p className="font-bold">
+                {profile.bodyAnalysis.category}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-textSecondary">BMR</p>
+              <p className="font-bold">
+                {profile.bodyAnalysis.bmr} kcal
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-textSecondary">TDEE</p>
+              <p className="font-bold">
+                {profile.bodyAnalysis.tdee} kcal
+              </p>
+            </div>
+
+          </div>
+
+          <p className="text-sm text-textSecondary mt-4">
+            Ideal weight range:{" "}
+            {profile.bodyAnalysis.idealWeight.min} kg –{" "}
+            {profile.bodyAnalysis.idealWeight.max} kg
+          </p>
+
+        </div>
+      )}
+
+    </div>
   </>
 )}
 

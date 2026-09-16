@@ -34,6 +34,10 @@ from engines.fis_engine import (
     calculate_hydration_score,
     calculate_consistency_from_history,
 )
+from engines.behavior_engine import (
+    load_foundation_data,
+    analyze_behavior
+)
 app = Flask(__name__)
 CORS(app)
 
@@ -205,6 +209,7 @@ def fis():
     nutrition_score,
     consistency_score
 )
+
     return jsonify({
     "fitnessActivity": {
         "stepScore": step_score,
@@ -237,6 +242,23 @@ def fis():
     
     "fis": fis_score
 })
+
+@app.route("/behavior", methods=["POST"])
+def behavior_analysis():
+
+    data = request.get_json()
+
+    tracking_records = data.get("trackingRecords", [])
+
+    foundation_df = load_foundation_data()
+
+    result = analyze_behavior(
+        tracking_records,
+        foundation_df
+    )
+
+    return jsonify(result)
+
 @app.route("/recommendations", methods=["POST"])
 def recommendations():
 
