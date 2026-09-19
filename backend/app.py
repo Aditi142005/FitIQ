@@ -1,5 +1,8 @@
 import profile
-
+import os
+import joblib
+import pandas as pd
+import shap
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from analytics.recommendation import generate_recommendations
@@ -38,6 +41,9 @@ from engines.behavior_engine import (
     load_foundation_data,
     analyze_behavior
 )
+from engines.consistency_prediction_engine import calculate_consistency_forecast
+from engines.cohort_engine import analyze_cohort
+from llm_service import generate_behavior_insights
 app = Flask(__name__)
 CORS(app)
 
@@ -257,7 +263,136 @@ def behavior_analysis():
         foundation_df
     )
 
+    insights = generate_behavior_insights(
+        result["mode"],
+        result["patterns"]
+    )
+
+    result["llmInsights"] = insights
+
     return jsonify(result)
+
+# Load E3 prediction model
+MODEL_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "ml",
+    "models",
+    "fitiq_bmi_change_model.pkl"
+)
+
+prediction_model = joblib.load(MODEL_PATH)
+
+@app.route("/prediction", methods=["POST"])
+def prediction_analysis():
+    try:
+        data = request.get_json()
+
+        age = data.get("age")
+        height_cm = data.get("height_cm")
+        weight_kg = data.get("weight_kg")
+        fitiq_bmi = data.get("fitiq_bmi")
+        daily_steps = data.get("daily_steps")
+        duration_minutes = data.get("duration_minutes")
+        hours_sleep = data.get("hours_sleep")
+        hydration_level = data.get("hydration_level")
+        stress_level = data.get("stress_level")
+
+        input_data = pd.DataFrame([{
+            "age": age,
+            "height_cm": height_cm,
+            "weight_kg": weight_kg,
+            "fitiq_bmi": fitiq_bmi,
+            "daily_steps": daily_steps,
+            "duration_minutes": duration_minutes,
+            "hours_sleep": hours_sleep,
+            "hydration_level": hydration_level,
+            "stress_level": stress_level
+        }])
+
+        predicted_change = float(
+            prediction_model.predict(input_data)[0]
+        )
+
+        predicted_future_bmi = (
+            float(fitiq_bmi) + predicted_change
+        )
+
+        # ================= SHAP EXPLANATION =================
+
+        explainer = shap.TreeExplainer(prediction_model)
+
+        shap_values = explainer.shap_values(input_data)
+
+        shap_importance = pd.DataFrame({
+            "feature": input_data.columns,
+            "impact": shap_values[0]
+        })
+
+        shap_importance["abs_impact"] = (
+            shap_importance["impact"].abs()
+        )
+
+        shap_importance = (
+            shap_importance
+            .sort_values("abs_impact", ascending=False)
+            .head(5)
+        )
+
+        shap_factors = []
+
+        for _, row in shap_importance.iterrows():
+
+            shap_factors.append({
+                "feature": row["feature"],
+                "impact": float(row["impact"])
+            })
+
+        # ================= RESPONSE =================
+
+        return jsonify({
+            "current_bmi": float(fitiq_bmi),
+            "predicted_bmi_change": predicted_change,
+            "predicted_future_bmi": predicted_future_bmi,
+            "shap_factors": shap_factors
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+@app.route("/consistency-prediction", methods=["POST"])
+def consistency_prediction():
+    try:
+        data = request.get_json()
+
+        tracking_records = data.get("trackingRecords", [])
+
+        result = calculate_consistency_forecast(
+            tracking_records
+        )
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+@app.route("/cohort", methods=["POST"])
+def cohort_analysis():
+    try:
+        data = request.get_json()
+
+        result = analyze_cohort(data)
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
 
 @app.route("/recommendations", methods=["POST"])
 def recommendations():
