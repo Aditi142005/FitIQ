@@ -43,6 +43,10 @@ from engines.behavior_engine import (
 )
 from engines.consistency_prediction_engine import calculate_consistency_forecast
 from engines.cohort_engine import analyze_cohort
+from engines.e5_anomaly_engine import (
+    analyze_e5,
+    analyze_user_activity
+)
 from llm_service import generate_behavior_insights
 app = Flask(__name__)
 CORS(app)
@@ -392,6 +396,37 @@ def cohort_analysis():
     except Exception as e:
         return jsonify({
             "error": str(e)
+        }), 500
+
+@app.route("/anomaly", methods=["POST"])
+def anomaly_analysis():
+
+    try:
+
+        data = request.get_json(silent=True) or {}
+
+        tracking_records = data.get(
+            "trackingRecords",
+            []
+        )
+
+        result = analyze_user_activity(
+            tracking_records
+        )
+
+        return jsonify(result), 200
+
+    except Exception as e:
+
+        print(
+            "E5 activity pattern analysis error:",
+            str(e)
+        )
+
+        return jsonify({
+            "status": "error",
+            "message":
+                "Unable to analyze your activity pattern."
         }), 500
 
 @app.route("/recommendations", methods=["POST"])

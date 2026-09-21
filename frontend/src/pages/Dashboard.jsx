@@ -18,6 +18,7 @@ import { analyzeBehavior } from "../services/behaviorService";
 import { getPrediction } from "../services/predictionService";
 import { getConsistencyPrediction } from "../services/consistencyPredictionService";
 import { getCohortAnalysis } from "../services/cohortService";
+import { getAnomalyAnalysis } from "../services/anomalyService";
 const getTodayDate = () => {
   const today = new Date();
 
@@ -50,6 +51,9 @@ const [, setConsistencyPredictionError] = useState(null);
 const [cohortResult, setCohortResult] = useState(null);
 const [cohortLoading, setCohortLoading] = useState(false);
 const [cohortError, setCohortError] = useState(null);
+const [anomalyResult, setAnomalyResult] = useState(null);
+const [anomalyLoading, setAnomalyLoading] = useState(false);
+const [anomalyError, setAnomalyError] = useState(null);
 const toggleGoal = async (goal) => {
 
   const updatedGoals = {
@@ -289,6 +293,30 @@ setCohortError(null);
   setPredictionLoading(false);
 
 }
+
+// ================= E5 ANOMALY & ACTIVITY PATTERNS =================
+
+try {
+  setAnomalyLoading(true);
+  setAnomalyError(null);
+
+  const anomalyData = await getAnomalyAnalysis(
+  trackingRecords
+);
+
+  console.log("E5 ANOMALY RESULT:", anomalyData);
+
+  setAnomalyResult(anomalyData);
+} catch (error) {
+  console.error("E5 anomaly analysis failed:", error);
+
+  setAnomalyError(
+    error.message || "Unable to generate anomaly analysis"
+  );
+} finally {
+  setAnomalyLoading(false);
+}
+
 const fisInput = prepareFisInput(data, trackingRecords);
 console.log("FIS INPUT:", fisInput);
 const fisData = await calculateFis(fisInput);
@@ -778,137 +806,195 @@ return () => {
         </>
       )}
 
+{/* ================= E2 ================= */}
+{behaviorResult && (
+  <section className="bg-white p-6 rounded-2xl shadow-card">
 
-      {/* ================= E2 ================= */}
-      {behaviorResult && (
-        <div className="bg-white p-6 rounded-2xl shadow-card">
+    {/* Header */}
+    <div>
+      <p className="text-sm font-medium text-[#C65D3B]">
+        E2 • Behavioral Pattern Mining
+      </p>
 
-          <h2 className="text-2xl font-bold">
-            🧠 Behavioral Insights
-          </h2>
+      <h2 className="text-2xl font-bold text-gray-900 mt-1">
+        Understand Your Habits
+      </h2>
 
-          {behaviorResult.mode === "population" ? (
-            <>
-              <p className="text-textSecondary mt-3">
-                Your recent tracking is still limited, so FitIQ is
-                currently using patterns from general fitness data
-                to provide useful insights.
-              </p>
+      <p className="text-sm text-textSecondary mt-1">
+        FitIQ looks for patterns in how your daily habits move together.
+      </p>
+    </div>
 
-              <div className="mt-5 space-y-3">
+    {/* Mode */}
+    <div className="mt-5 p-4 rounded-xl bg-[#FFF7F3] border border-[#F3D8CC]">
 
-                <p>
-                  😴 <strong>Sleep & Activity:</strong> General fitness
-                  data currently shows no clear relationship between
-                  sleep duration and daily activity.
-                </p>
+      <p className="text-xs font-semibold text-[#C65D3B] uppercase tracking-wide">
+        {behaviorResult.mode === "population"
+          ? "Population Insight"
+          : "Personal Insight"}
+      </p>
 
-                <p>
-                  💧 <strong>Hydration & Exercise:</strong> General
-                  fitness data currently shows no clear relationship
-                  between hydration and exercise duration.
-                </p>
+      <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+        {behaviorResult.mode === "population"
+          ? "Your personal tracking history is still limited, so FitIQ is using general fitness data to identify broad behavioral patterns."
+          : "These patterns are based on your own recent tracking history."}
+      </p>
 
-              </div>
+    </div>
 
-              <div className="mt-5 p-4 rounded-xl bg-gray-50">
-                <p className="font-semibold">
-                  💡 Keep improving
-                </p>
+    {/* Habit Connections */}
+    <div className="mt-6">
 
-                <p className="text-textSecondary mt-1">
-                  Try to maintain a consistent sleep routine, stay
-                  hydrated, and keep your activity regular.
-                </p>
-              </div>
+      <h3 className="text-lg font-bold text-gray-900">
+        Your Habit Connections
+      </h3>
 
-              <p className="text-sm text-textSecondary mt-5">
-                🔒 These insights are not personalized yet. Keep
-                tracking your daily habits. Once FitIQ has enough of
-                your records, it will start identifying patterns
-                specifically from your own behavior.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-textSecondary mt-3">
-                Based on your recent tracking, FitIQ is identifying
-                patterns in your daily habits.
-              </p>
+      <p className="text-xs text-textSecondary mt-1 mb-4">
+        These connections show whether two habits tend to move together in the data.
+      </p>
 
-              <div className="mt-5 space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                {behaviorResult.patterns
-                  ?.filter(
-                    (pattern) =>
-                      pattern.strength !== "Weak or no relationship" &&
-                      pattern.correlation !== null
-                  )
-                  .slice(0, 2)
-                  .map((pattern, index) => {
+        {behaviorResult.patterns
+          ?.filter((pattern) => pattern.correlation !== null)
+          .map((pattern, index) => {
 
-                    const relationshipNames = {
-                      sleep_steps: "Sleep & Activity",
-                      sleep_exercise: "Sleep & Exercise",
-                      hydration_steps: "Hydration & Activity",
-                      hydration_exercise: "Hydration & Exercise"
-                    };
+            const relationshipNames = {
+              sleep_steps: ["😴 Sleep", "👣 Activity"],
+              sleep_exercise: ["😴 Sleep", "🏃 Exercise"],
+              hydration_steps: ["💧 Hydration", "👣 Activity"],
+              hydration_exercise: ["💧 Hydration", "🏃 Exercise"]
+            };
 
-                    const relationship =
-                      relationshipNames[pattern.relationship] ||
-                      pattern.relationship;
+            const names =
+              relationshipNames[pattern.relationship] || [
+                pattern.relationship,
+                ""
+              ];
 
-                    const positive = pattern.correlation > 0;
+            const correlation = Number(pattern.correlation);
+            const absoluteCorrelation = Math.abs(correlation);
 
-                    return (
-                      <p key={index}>
-                        {pattern.relationship.includes("sleep")
-                          ? "😴"
-                          : "💧"}{" "}
-                        <strong>{relationship}:</strong>{" "}
-                        Your recent tracking shows a{" "}
-                        {positive ? "positive" : "negative"} pattern
-                        between these habits.
-                      </p>
-                    );
-                  })}
+            let interpretation = "";
+            let label = "";
+            let connector = "";
 
-                {behaviorResult.patterns?.every(
-                  (pattern) =>
-                    pattern.strength === "Weak or no relationship" ||
-                    pattern.correlation === null
-                ) && (
-                  <p>
-                    📈 Your recent tracking does not show any strong
-                    behavioral patterns yet. Keep tracking to help
-                    FitIQ understand your habits better.
+            if (absoluteCorrelation < 0.3) {
+
+              label = "No clear pattern";
+              connector = "·";
+
+              interpretation =
+                "Your tracked data does not show a clear connection between these habits yet.";
+
+            } else if (correlation > 0) {
+
+              label =
+                absoluteCorrelation >= 0.5
+                  ? "Move together"
+                  : "Slight connection";
+
+              connector = "↗";
+
+              interpretation =
+                "These habits tended to increase or decrease together in your tracked data.";
+
+            } else {
+
+              label =
+                absoluteCorrelation >= 0.5
+                  ? "Move differently"
+                  : "Slight inverse pattern";
+
+              connector = "↘";
+
+              interpretation =
+                "These habits tended to move in opposite directions in your tracked data.";
+
+            }
+
+            return (
+              <div
+                key={index}
+                className="rounded-2xl border border-gray-100 bg-gray-50 p-5"
+              >
+
+                {/* Habit names */}
+                <div className="flex items-center justify-between gap-3">
+
+                  <div className="flex-1 text-center">
+                    <p className="text-sm font-semibold text-gray-800">
+                      {names[0]}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center shrink-0">
+
+                    <span className="text-xl text-[#C65D3B]">
+                      {connector}
+                    </span>
+
+                    <span className="text-xs font-semibold text-gray-500">
+                      {correlation > 0 ? "+" : ""}
+                      {correlation.toFixed(2)}
+                    </span>
+
+                  </div>
+
+                  <div className="flex-1 text-center">
+                    <p className="text-sm font-semibold text-gray-800">
+                      {names[1]}
+                    </p>
+                  </div>
+
+                </div>
+
+                {/* Interpretation */}
+                <div className="mt-4 text-center">
+
+                  <span className="inline-flex px-3 py-1 rounded-full bg-white border border-gray-200 text-xs font-medium text-gray-600">
+                    {label}
+                  </span>
+
+                  <p className="text-xs text-gray-600 mt-3 leading-relaxed">
+                    {interpretation}
                   </p>
-                )}
+
+                </div>
 
               </div>
+            );
+          })}
 
-              <div className="mt-5 p-4 rounded-xl bg-gray-50">
-                <p className="font-semibold">
-                  💡 Keep improving
-                </p>
+      </div>
 
-                <p className="text-textSecondary mt-1">
-                  Keep your sleep, hydration, exercise, and daily
-                  activity as consistent as possible. The more you
-                  track, the better FitIQ can understand your patterns.
-                </p>
-              </div>
+    </div>
 
-              <p className="text-sm text-textSecondary mt-5">
-                ✨ These insights are based on your own recent
-                tracking and become more meaningful as you continue
-                using FitIQ.
-              </p>
-            </>
-          )}
+    {/* What should you do? */}
+    <div className="mt-5 p-4 rounded-xl bg-gray-50">
 
-        </div>
-      )}
+      <p className="font-semibold text-gray-800">
+        💡 What should you do?
+      </p>
+
+      <p className="text-sm text-textSecondary mt-1 leading-relaxed">
+        Keep tracking your sleep, hydration, exercise, and daily
+        activity consistently. FitIQ can then check whether these
+        patterns remain consistent over time.
+      </p>
+
+    </div>
+
+    {/* Limitation */}
+    <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+      A pattern does not mean that one habit causes another.
+      FitIQ uses these relationships to understand your behavior,
+      not to diagnose or predict cause and effect.
+    </p>
+
+  </section>
+)}
+
 {/* ================= E3 PREDICTIVE ANALYTICS ================= */}
 
 <div className="bg-white p-8 rounded-2xl shadow-card">
@@ -1588,107 +1674,130 @@ return () => {
   )}
 
 </div>
-{/* ==================== E4 COHORT INTELLIGENCE ==================== */}
+
+{/* ==================== E4 DYNAMIC PEER BENCHMARKING ==================== */}
 
 <section className="mt-8">
 
+  {/* Header */}
   <div className="mb-6">
     <p className="text-sm font-medium text-[#C65D3B]">
-      E4 • Cohort Intelligence
+      E4 • Dynamic Peer Benchmarking
     </p>
 
     <h2 className="text-2xl font-bold text-gray-900 mt-1">
-      Your Fitness Cohort
+      Your Fitness Benchmark
     </h2>
 
     <p className="text-sm text-gray-500 mt-1">
-      See how your current fitness profile compares with similar participants.
+      See how your current fitness profile compares with similar profiles.
     </p>
   </div>
 
+  {/* Loading */}
   {cohortLoading && (
-    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-      <div className="flex items-center gap-3">
-        <div className="w-5 h-5 border-2 border-[#C65D3B] border-t-transparent rounded-full animate-spin" />
+    <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+      <div className="w-8 h-8 border-2 border-[#C65D3B] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
 
-        <p className="text-sm text-gray-500">
-          Finding your closest fitness cohort...
-        </p>
-      </div>
+      <p className="text-sm font-medium text-gray-700">
+        Finding your closest benchmark profiles...
+      </p>
+
+      <p className="text-xs text-gray-400 mt-1">
+        Comparing your profile with similar participants.
+      </p>
     </div>
   )}
 
+  {/* Error */}
   {cohortError && !cohortLoading && (
-    <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
-      <p className="text-sm font-medium text-red-700">
-        Unable to generate cohort analysis
+    <div className="bg-white rounded-2xl border border-red-100 p-6">
+      <p className="text-sm font-semibold text-red-600">
+        Unable to generate benchmark analysis
       </p>
 
-      <p className="text-sm text-red-600 mt-1">
-        {cohortError}
+      <p className="text-xs text-gray-500 mt-1">
+        Please try again after recording more profile information.
       </p>
     </div>
   )}
 
+  {/* Success */}
   {cohortResult?.status === "success" && !cohortLoading && (
-    <>
-      {/* Top summary cards */}
+    <div className="space-y-5">
+
+      {/* ==================== SUMMARY ==================== */}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500">
-            Similar participants
+        {/* Similar profiles */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            Similar benchmark profiles
           </p>
 
           <div className="flex items-end gap-2 mt-2">
-            <span className="text-4xl font-bold text-gray-900">
+            <span className="text-3xl font-bold text-gray-900">
               {cohortResult.cohort_size}
             </span>
 
             <span className="text-sm text-gray-500 mb-1">
-              people
+              profiles
             </span>
           </div>
 
-          <p className="text-xs text-gray-400 mt-2">
-            Selected from the real-world FitIQ survey dataset
+          <p className="text-xs text-gray-400 mt-1">
+            Selected based on profile similarity.
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500">
-            Cohort similarity
+        {/* Similarity */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            Average profile match
           </p>
 
           <div className="flex items-end gap-2 mt-2">
-            <span className="text-4xl font-bold text-[#C65D3B]">
+            <span className="text-3xl font-bold text-[#C65D3B]">
               {cohortResult.average_similarity?.toFixed(1)}%
+            </span>
+
+            <span className="text-sm text-gray-500 mb-1">
+              similarity
             </span>
           </div>
 
-          <p className="text-xs text-gray-400 mt-2">
-            Average similarity across your selected cohort
+          <p className="text-xs text-gray-400 mt-1">
+            Average similarity across the selected profiles.
           </p>
         </div>
 
       </div>
 
-      {/* Cohort insight */}
-      <div className="mt-4 bg-[#FFF7F3] border border-[#F3D8CC] rounded-2xl p-5">
+      {/* ==================== COLD START INFO ==================== */}
 
-        <div className="flex items-start gap-3">
+      <div className="bg-[#FFF7F3] border border-[#F3D8CC] rounded-2xl p-5">
 
-          <div className="w-10 h-10 rounded-xl bg-[#C65D3B] text-white flex items-center justify-center shrink-0">
-            ✦
+        <div className="flex gap-3">
+
+          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0">
+            <span className="text-[#C65D3B] text-sm">i</span>
           </div>
 
           <div>
-            <p className="font-semibold text-gray-900">
-              Cohort Insight
+            <p className="text-sm font-semibold text-gray-800">
+              Initial benchmark
             </p>
 
-            <p className="text-sm text-gray-600 mt-1 leading-relaxed">
-              {cohortResult.message}
+            <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+              This benchmark is currently based on 58 survey responses.
+              These responses are used only to provide an initial comparison
+              while FitIQ builds its own user population.
+            </p>
+
+            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+              As FitIQ grows, the same benchmarking system can transition
+              to real FitIQ user data.
             </p>
           </div>
 
@@ -1696,471 +1805,648 @@ return () => {
 
       </div>
 
-      
-{/* ==================== E4 COHORT COMPARISON ==================== */}
+      {/* ==================== BENCHMARK INSIGHT ==================== */}
 
-<div className="mt-6 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
 
-  <div className="mb-6">
-    <h3 className="text-lg font-semibold text-gray-900">
-      Your Profile vs Similar Participants
-    </h3>
+        <p className="text-xs font-medium text-[#C65D3B] uppercase tracking-wide">
+          Benchmark insight
+        </p>
 
-    <p className="text-sm text-gray-500 mt-1">
-      Compare your current habits with the average profile of your closest cohort.
-    </p>
-  </div>
+        <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+          {cohortResult.message}
+        </p>
 
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-    {/* BMI */}
-    <div className="rounded-2xl bg-gray-50 p-5 border border-gray-100">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
-          BMI
-        </span>
-
-        <span className="text-xs text-gray-400">
-          Body composition
-        </span>
       </div>
 
-      <div className="flex items-end gap-8 mt-5">
+      {/* ==================== PROFILE COMPARISON ==================== */}
 
-        <div>
-          <p className="text-xs text-gray-400 mb-1">You</p>
-          <p className="text-2xl font-bold text-[#C65D3B]">
-            {cohortResult.comparisons.bmi.user}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+
+        <div className="mb-5">
+          <h3 className="text-lg font-bold text-gray-900">
+            Your Profile vs Benchmark
+          </h3>
+
+          <p className="text-xs text-gray-500 mt-1">
+            Compare your current values with the average of similar profiles.
           </p>
         </div>
 
-        <div>
-          <p className="text-xs text-gray-400 mb-1">Cohort</p>
-          <p className="text-2xl font-bold text-gray-800">
-            {cohortResult.comparisons.bmi.cohort}
-          </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+          {/* BMI */}
+          <div className="rounded-xl bg-gray-50 p-4">
+            <p className="text-xs font-medium text-gray-500">
+              BMI
+            </p>
+
+            <div className="flex items-end justify-between mt-2">
+              <div>
+                <p className="text-xs text-gray-400">You</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {cohortResult.comparisons.bmi.user?.toFixed(1)}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Benchmark</p>
+                <p className="text-xl font-bold text-gray-700">
+                  {cohortResult.comparisons.bmi.cohort?.toFixed(1)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Daily Steps */}
+          <div className="rounded-xl bg-gray-50 p-4">
+            <p className="text-xs font-medium text-gray-500">
+              Daily Steps
+            </p>
+
+            <div className="flex items-end justify-between mt-2">
+              <div>
+                <p className="text-xs text-gray-400">You</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {Math.round(
+                    cohortResult.comparisons.daily_steps.user || 0
+                  ).toLocaleString()}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Benchmark</p>
+                <p className="text-xl font-bold text-gray-700">
+                  {Math.round(
+                    cohortResult.comparisons.daily_steps.cohort || 0
+                  ).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Exercise */}
+          <div className="rounded-xl bg-gray-50 p-4">
+            <p className="text-xs font-medium text-gray-500">
+              Exercise Days
+            </p>
+
+            <div className="flex items-end justify-between mt-2">
+              <div>
+                <p className="text-xs text-gray-400">You</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {cohortResult.comparisons.exercise_days.user?.toFixed(1)}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Benchmark</p>
+                <p className="text-xl font-bold text-gray-700">
+                  {cohortResult.comparisons.exercise_days.cohort?.toFixed(1)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Sleep */}
+          <div className="rounded-xl bg-gray-50 p-4">
+            <p className="text-xs font-medium text-gray-500">
+              Sleep
+            </p>
+
+            <div className="flex items-end justify-between mt-2">
+              <div>
+                <p className="text-xs text-gray-400">You</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {cohortResult.comparisons.sleep.user?.toFixed(1)}h
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Benchmark</p>
+                <p className="text-xl font-bold text-gray-700">
+                  {cohortResult.comparisons.sleep.cohort?.toFixed(1)}h
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Water */}
+          <div className="rounded-xl bg-gray-50 p-4">
+            <p className="text-xs font-medium text-gray-500">
+              Water Intake
+            </p>
+
+            <div className="flex items-end justify-between mt-2">
+              <div>
+                <p className="text-xs text-gray-400">You</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {cohortResult.comparisons.water.user?.toFixed(1)}L
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Benchmark</p>
+                <p className="text-xl font-bold text-gray-700">
+                  {cohortResult.comparisons.water.cohort?.toFixed(1)}L
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Consistency */}
+          <div className="rounded-xl bg-gray-50 p-4">
+            <p className="text-xs font-medium text-gray-500">
+              Consistency
+            </p>
+
+            <div className="flex items-end justify-between mt-2">
+              <div>
+                <p className="text-xs text-gray-400">You</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {cohortResult.comparisons.consistency.user?.toFixed(0)}%
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Benchmark</p>
+                <p className="text-xl font-bold text-gray-700">
+                  {cohortResult.comparisons.consistency.cohort?.toFixed(0)}%
+                </p>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-      </div>
-
-      <div className="relative mt-5 h-2 bg-gray-200 rounded-full">
-
-        <div className="absolute left-0 right-0 top-1/2 h-px bg-gray-300" />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C65D3B] border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.bmi.user /
-                Math.max(
-                  cohortResult.comparisons.bmi.user,
-                  cohortResult.comparisons.bmi.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-gray-700 border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.bmi.cohort /
-                Math.max(
-                  cohortResult.comparisons.bmi.user,
-                  cohortResult.comparisons.bmi.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-      </div>
-
-      <div className="flex justify-between mt-3 text-xs text-gray-400">
-        <span>You</span>
-        <span>Cohort</span>
-      </div>
-    </div>
-
-
-    {/* DAILY STEPS */}
-    <div className="rounded-2xl bg-gray-50 p-5 border border-gray-100">
-
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
-          Daily Steps
-        </span>
-
-        <span className="text-xs text-gray-400">
-          Daily activity
-        </span>
-      </div>
-
-      <div className="flex items-end gap-8 mt-5">
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">You</p>
-          <p className="text-2xl font-bold text-[#C65D3B]">
-            {Math.round(cohortResult.comparisons.daily_steps.user).toLocaleString()}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">Cohort</p>
-          <p className="text-2xl font-bold text-gray-800">
-            {Math.round(cohortResult.comparisons.daily_steps.cohort).toLocaleString()}
-          </p>
-        </div>
-
-      </div>
-
-      <div className="relative mt-5 h-2 bg-gray-200 rounded-full">
-
-        <div className="absolute left-0 right-0 top-1/2 h-px bg-gray-300" />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C65D3B] border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.daily_steps.user /
-                Math.max(
-                  cohortResult.comparisons.daily_steps.user,
-                  cohortResult.comparisons.daily_steps.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-gray-700 border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.daily_steps.cohort /
-                Math.max(
-                  cohortResult.comparisons.daily_steps.user,
-                  cohortResult.comparisons.daily_steps.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-      </div>
-
-      <div className="flex justify-between mt-3 text-xs text-gray-400">
-        <span>You</span>
-        <span>Cohort</span>
-      </div>
-
-    </div>
-
-
-    {/* EXERCISE */}
-    <div className="rounded-2xl bg-gray-50 p-5 border border-gray-100">
-
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
-          Exercise Days
-        </span>
-
-        <span className="text-xs text-gray-400">
-          Weekly routine
-        </span>
-      </div>
-
-      <div className="flex items-end gap-8 mt-5">
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">You</p>
-          <p className="text-2xl font-bold text-[#C65D3B]">
-            {cohortResult.comparisons.exercise_days.user}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">Cohort</p>
-          <p className="text-2xl font-bold text-gray-800">
-            {cohortResult.comparisons.exercise_days.cohort}
-          </p>
-        </div>
-
-      </div>
-
-      <div className="relative mt-5 h-2 bg-gray-200 rounded-full">
-
-        <div className="absolute left-0 right-0 top-1/2 h-px bg-gray-300" />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C65D3B] border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.exercise_days.user /
-                Math.max(
-                  cohortResult.comparisons.exercise_days.user,
-                  cohortResult.comparisons.exercise_days.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-gray-700 border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.exercise_days.cohort /
-                Math.max(
-                  cohortResult.comparisons.exercise_days.user,
-                  cohortResult.comparisons.exercise_days.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-      </div>
-
-      <div className="flex justify-between mt-3 text-xs text-gray-400">
-        <span>You</span>
-        <span>Cohort</span>
       </div>
 
     </div>
-
-
-    {/* SLEEP */}
-    <div className="rounded-2xl bg-gray-50 p-5 border border-gray-100">
-
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
-          Sleep
-        </span>
-
-        <span className="text-xs text-gray-400">
-          Recovery
-        </span>
-      </div>
-
-      <div className="flex items-end gap-8 mt-5">
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">You</p>
-          <p className="text-2xl font-bold text-[#C65D3B]">
-            {cohortResult.comparisons.sleep.user}h
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">Cohort</p>
-          <p className="text-2xl font-bold text-gray-800">
-            {cohortResult.comparisons.sleep.cohort}h
-          </p>
-        </div>
-
-      </div>
-
-      <div className="relative mt-5 h-2 bg-gray-200 rounded-full">
-
-        <div className="absolute left-0 right-0 top-1/2 h-px bg-gray-300" />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C65D3B] border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.sleep.user /
-                Math.max(
-                  cohortResult.comparisons.sleep.user,
-                  cohortResult.comparisons.sleep.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-gray-700 border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.sleep.cohort /
-                Math.max(
-                  cohortResult.comparisons.sleep.user,
-                  cohortResult.comparisons.sleep.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-      </div>
-
-      <div className="flex justify-between mt-3 text-xs text-gray-400">
-        <span>You</span>
-        <span>Cohort</span>
-      </div>
-
-    </div>
-
-
-    {/* WATER */}
-    <div className="rounded-2xl bg-gray-50 p-5 border border-gray-100">
-
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
-          Water Intake
-        </span>
-
-        <span className="text-xs text-gray-400">
-          Hydration
-        </span>
-      </div>
-
-      <div className="flex items-end gap-8 mt-5">
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">You</p>
-          <p className="text-2xl font-bold text-[#C65D3B]">
-            {cohortResult.comparisons.water.user}L
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">Cohort</p>
-          <p className="text-2xl font-bold text-gray-800">
-            {cohortResult.comparisons.water.cohort}L
-          </p>
-        </div>
-
-      </div>
-
-      <div className="relative mt-5 h-2 bg-gray-200 rounded-full">
-
-        <div className="absolute left-0 right-0 top-1/2 h-px bg-gray-300" />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C65D3B] border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.water.user /
-                Math.max(
-                  cohortResult.comparisons.water.user,
-                  cohortResult.comparisons.water.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-gray-700 border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              (cohortResult.comparisons.water.cohort /
-                Math.max(
-                  cohortResult.comparisons.water.user,
-                  cohortResult.comparisons.water.cohort
-                )) * 100,
-              100
-            )}%`
-          }}
-        />
-
-      </div>
-
-      <div className="flex justify-between mt-3 text-xs text-gray-400">
-        <span>You</span>
-        <span>Cohort</span>
-      </div>
-
-    </div>
-
-
-    {/* CONSISTENCY */}
-    <div className="rounded-2xl bg-gray-50 p-5 border border-gray-100">
-
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
-          Consistency
-        </span>
-
-        <span className="text-xs text-gray-400">
-          Routine
-        </span>
-      </div>
-
-      <div className="flex items-end gap-8 mt-5">
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">You</p>
-          <p className="text-2xl font-bold text-[#C65D3B]">
-            {cohortResult.comparisons.consistency.user}%
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs text-gray-400 mb-1">Cohort</p>
-          <p className="text-2xl font-bold text-gray-800">
-            {cohortResult.comparisons.consistency.cohort}%
-          </p>
-        </div>
-
-      </div>
-
-      <div className="relative mt-5 h-2 bg-gray-200 rounded-full">
-
-        <div className="absolute left-0 right-0 top-1/2 h-px bg-gray-300" />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C65D3B] border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              cohortResult.comparisons.consistency.user,
-              100
-            )}%`
-          }}
-        />
-
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-gray-700 border-2 border-white shadow"
-          style={{
-            left: `${Math.min(
-              cohortResult.comparisons.consistency.cohort,
-              100
-            )}%`
-          }}
-        />
-
-      </div>
-
-      <div className="flex justify-between mt-3 text-xs text-gray-400">
-        <span>You</span>
-        <span>Cohort</span>
-      </div>
-
-    </div>
-
-  </div>
-
-  {/* Legend */}
-  <div className="flex items-center justify-center gap-6 mt-6 text-xs text-gray-500">
-
-    <div className="flex items-center gap-2">
-      <span className="w-2.5 h-2.5 rounded-full bg-[#C65D3B]" />
-      You
-    </div>
-
-    <div className="flex items-center gap-2">
-      <span className="w-2.5 h-2.5 rounded-full bg-gray-700" />
-      Similar cohort
-    </div>
-
-  </div>
-
-</div>
-   </>
   )}
+
 </section>
+
+{/* ================= E5 ACTIVITY PATTERN INTELLIGENCE ================= */}
+
+<div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+  {/* Header */}
+  <div className="flex items-start justify-between mb-6">
+
+    <div>
+      <p className="text-sm font-semibold text-orange-600">
+        E5 • ACTIVITY INTELLIGENCE
+      </p>
+
+      <h2 className="text-2xl font-bold text-gray-900 mt-1">
+        Activity Pattern Intelligence
+      </h2>
+
+      <p className="text-sm text-gray-500 mt-1 max-w-2xl">
+        Understand how your recent activity compares with your own routine.
+      </p>
+    </div>
+
+    <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-2xl">
+      🔎
+    </div>
+
+  </div>
+
+
+  {/* Loading */}
+  {anomalyLoading && (
+    <div className="py-12 text-center">
+
+      <div className="animate-spin w-8 h-8 border-4 border-orange-200 border-t-orange-600 rounded-full mx-auto mb-3"></div>
+
+      <p className="text-gray-500 text-sm">
+        Understanding your activity pattern...
+      </p>
+
+    </div>
+  )}
+
+
+  {/* Error */}
+  {!anomalyLoading && anomalyError && (
+    <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+
+      <p className="font-semibold text-red-700">
+        Unable to load activity analysis
+      </p>
+
+      <p className="text-sm text-red-600 mt-1">
+        {anomalyError}
+      </p>
+
+    </div>
+  )}
+
+
+  {/* Insufficient Data */}
+  {!anomalyLoading &&
+    !anomalyError &&
+    anomalyResult?.status === "success" &&
+    anomalyResult?.data_status === "insufficient_data" && (
+
+      <div className="rounded-2xl bg-orange-50 border border-orange-100 p-6">
+
+        <div className="flex items-start gap-4">
+
+          <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-xl">
+            📊
+          </div>
+
+          <div>
+
+            <h3 className="font-bold text-gray-900">
+              {anomalyResult.insight?.title ||
+                "Keep tracking to unlock activity insights"}
+            </h3>
+
+            <p className="text-sm text-gray-600 mt-1">
+              {anomalyResult.insight?.message}
+            </p>
+
+            {anomalyResult.insight?.action && (
+              <p className="text-sm font-semibold text-orange-700 mt-3">
+                💡 {anomalyResult.insight.action}
+              </p>
+            )}
+
+          </div>
+
+        </div>
+
+        <p className="text-xs text-gray-500 mt-5">
+          {anomalyResult.records_used || 0} day
+          {anomalyResult.records_used === 1 ? "" : "s"} recorded.
+          Keep logging your activity so FitIQ can understand your personal
+          baseline.
+        </p>
+
+      </div>
+    )}
+
+{/* Ready Result */}
+{!anomalyLoading &&
+  !anomalyError &&
+  anomalyResult?.status === "success" &&
+  anomalyResult?.data_status === "ready" && (
+
+    <>
+
+      {/* ================= MAIN INSIGHT ================= */}
+      <div className="rounded-2xl bg-orange-50 border border-orange-100 p-5 mb-5">
+
+        <div className="flex items-start gap-3">
+
+          <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-xl shrink-0">
+            {anomalyResult.insight?.type === "activity_drop"
+              ? "📉"
+              : anomalyResult.insight?.type === "activity_increase"
+              ? "📈"
+              : anomalyResult.insight?.type === "stable"
+              ? "🔥"
+              : "💡"}
+          </div>
+
+          <div className="flex-1">
+
+            <div className="flex flex-wrap items-center gap-2">
+
+              <h3 className="text-lg font-bold text-gray-900">
+                {anomalyResult.insight?.title}
+              </h3>
+
+              <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-white text-orange-700">
+                Personal insight
+              </span>
+
+            </div>
+
+            <p className="text-sm text-gray-700 mt-1.5 leading-relaxed">
+              {anomalyResult.insight?.message}
+            </p>
+
+            {anomalyResult.insight?.action && (
+              <div className="mt-3 flex items-start gap-2 bg-white rounded-xl px-3 py-2.5">
+
+                <span className="text-sm">
+                  💡
+                </span>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    FitIQ suggestion
+                  </p>
+
+                  <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                    {anomalyResult.insight.action}
+                  </p>
+                </div>
+
+              </div>
+            )}
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      {/* ================= QUICK METRICS ================= */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+
+        {/* Recent */}
+        <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
+
+          <p className="text-xs text-gray-500">
+            Recent
+          </p>
+
+          <p className="text-2xl font-bold text-gray-900 mt-1">
+            {Number(anomalyResult.recent_activity || 0).toFixed(0)}%
+          </p>
+
+          <p className="text-[11px] text-gray-500 mt-0.5">
+            Latest activity
+          </p>
+
+        </div>
+
+
+        {/* Baseline */}
+        <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
+
+          <p className="text-xs text-gray-500">
+            Usual
+          </p>
+
+          <p className="text-2xl font-bold text-gray-900 mt-1">
+            {Number(anomalyResult.baseline_activity || 0).toFixed(0)}%
+          </p>
+
+          <p className="text-[11px] text-gray-500 mt-0.5">
+            Your baseline
+          </p>
+
+        </div>
+
+
+        {/* Stability */}
+        <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
+
+          <div className="flex items-center justify-between">
+
+            <p className="text-xs text-gray-500">
+              Stability
+            </p>
+
+            <span className="text-sm">
+              {Number(anomalyResult.stability || 0) >= 75
+                ? "🟢"
+                : Number(anomalyResult.stability || 0) >= 50
+                ? "🟡"
+                : "🔴"}
+            </span>
+
+          </div>
+
+          <p className="text-2xl font-bold text-gray-900 mt-1">
+            {Number(anomalyResult.stability || 0).toFixed(0)}%
+          </p>
+
+          <p className="text-[11px] text-gray-500 mt-0.5">
+            Routine consistency
+          </p>
+
+        </div>
+
+      </div>
+
+
+      {/* ================= RECENT VS USUAL ================= */}
+      <div className="rounded-xl border border-gray-100 p-4 mb-5">
+
+        <div className="flex items-center justify-between mb-3">
+
+          <div>
+            <p className="text-sm font-semibold text-gray-900">
+              Recent activity vs usual
+            </p>
+
+            <p className="text-xs text-gray-500 mt-0.5">
+              Compared with your personal activity baseline.
+            </p>
+          </div>
+
+          <span className="text-xs font-semibold text-gray-500">
+            {anomalyResult.records_used} tracked days
+          </span>
+
+        </div>
+
+
+        <div className="space-y-3">
+
+          {/* Recent */}
+          <div>
+
+            <div className="flex justify-between text-xs mb-1">
+
+              <span className="text-gray-600">
+                Recent activity
+              </span>
+
+              <span className="font-semibold text-gray-900">
+                {Number(anomalyResult.recent_activity || 0).toFixed(0)}%
+              </span>
+
+            </div>
+
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+
+              <div
+                className="h-full bg-orange-500 rounded-full transition-all duration-700"
+                style={{
+                  width: `${Math.min(
+                    Math.max(Number(anomalyResult.recent_activity || 0), 0),
+                    100
+                  )}%`
+                }}
+              />
+
+            </div>
+
+          </div>
+
+
+          {/* Usual */}
+          <div>
+
+            <div className="flex justify-between text-xs mb-1">
+
+              <span className="text-gray-600">
+                Your usual
+              </span>
+
+              <span className="font-semibold text-gray-900">
+                {Number(anomalyResult.baseline_activity || 0).toFixed(0)}%
+              </span>
+
+            </div>
+
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+
+              <div
+                className="h-full bg-gray-400 rounded-full transition-all duration-700"
+                style={{
+                  width: `${Math.min(
+                    Math.max(Number(anomalyResult.baseline_activity || 0), 0),
+                    100
+                  )}%`
+                }}
+              />
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      {/* ================= RECENT ACTIVITY ================= */}
+      <div>
+
+        <div className="flex items-center justify-between mb-3">
+
+          <div>
+
+            <h3 className="text-base font-bold text-gray-900">
+              Recent activity
+            </h3>
+
+            <p className="text-xs text-gray-500 mt-0.5">
+              Your latest tracked activity.
+            </p>
+
+          </div>
+
+          <span className="text-xs text-gray-500">
+            {anomalyResult.records_used} tracked days
+          </span>
+
+        </div>
+
+
+        <div className="space-y-2">
+
+          {(anomalyResult.timeline || [])
+            .slice(-3)
+            .map((day, index, visibleDays) => {
+
+              const score = Number(day.activity_score || 0);
+
+              const isLatest =
+                index === visibleDays.length - 1;
+
+              return (
+
+                <div
+                  key={`${day.date}-${index}`}
+                  className={`rounded-xl border p-3 ${
+                    isLatest
+                      ? "border-orange-200 bg-orange-50/40"
+                      : "border-gray-100 bg-white"
+                  }`}
+                >
+
+                  {/* Top row */}
+                  <div className="flex items-center justify-between gap-3">
+
+                    <div className="flex items-center gap-2 min-w-0">
+
+                      <p className="text-sm font-semibold text-gray-900">
+                        {day.date}
+                      </p>
+
+                      {isLatest && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full">
+                          Latest
+                        </span>
+                      )}
+
+                    </div>
+
+                    <p className="text-sm font-bold text-gray-900">
+                      {score.toFixed(0)}%
+                    </p>
+
+                  </div>
+
+
+                  {/* Score bar */}
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
+
+                    <div
+                      className="h-full bg-orange-400 rounded-full"
+                      style={{
+                        width: `${Math.min(
+                          Math.max(score, 0),
+                          100
+                        )}%`
+                      }}
+                    />
+
+                  </div>
+
+
+                  {/* Small metrics */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] text-gray-500">
+
+                    <span>
+                      🚶 {Number(day.steps || 0).toLocaleString()} steps
+                    </span>
+
+                    <span>
+                      🏃 {Number(day.exercise_minutes || 0)} min exercise
+                    </span>
+
+                    <span>
+                      {day.workout_completed
+                        ? "✓ Workout completed"
+                        : "— No workout"}
+                    </span>
+
+                  </div>
+
+                </div>
+
+              );
+
+            })}
+
+        </div>
+
+      </div>
+
+
+      {/* Small context note */}
+      <p className="text-[11px] text-gray-400 mt-4">
+        Based on your personal activity history. More tracking helps FitIQ
+        understand your routine better.
+      </p>
+
+    </>
+
+)}
+</div>
+
 
       {/* ================= BODY ANALYSIS ================= */}
       {profile?.bodyAnalysis && (
