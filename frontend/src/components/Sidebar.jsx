@@ -29,24 +29,13 @@ function Sidebar({ setActivePage }) {
   🍎 Nutrition
 </button>
 
-        <button
-  onClick={() => setActivePage("workout")}
-  className="w-full text-left p-3 rounded-xl hover:bg-orange-100"
->
-  💪 Workout
-</button>
 <button
   onClick={() => setActivePage("tracking")}
   className="..."
 >
   📅 Daily Tracking
 </button>
-        <button
-  onClick={() => setActivePage("recommendations")}
-  className="w-full text-left p-3 rounded-xl hover:bg-orange-100"
->
-  🎯 Recommendations
-</button>
+       
 
         <button
   onClick={() => setActivePage("profile")}

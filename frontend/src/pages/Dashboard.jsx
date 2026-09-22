@@ -4,12 +4,13 @@ import Recommendation from "./recommendation";
 import { auth } from "../firebase/firebase";
 import { prepareFisInput, calculateFis } from "../services/fisService";
 import {
- getUserProfile,
-updateDailyGoals,
-updateTodayCompletion,
-getDailyTracking,
-getWeeklyTracking,
-getLast7DaysTracking
+  getUserProfile,
+  updateDailyGoals,
+  updateTodayCompletion,
+  getDailyTracking,
+  getWeeklyTracking,
+  getLast7DaysTracking,
+  getStreakData
 } from "../services/firestoreService";
 import { useNavigate} from "react-router-dom";
 import { logout } from "../services/authService";
@@ -29,8 +30,75 @@ const getTodayDate = () => {
 
   return `${year}-${month}-${day}`;
 };
+const getDateKey = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getPastDateKey = (daysAgo) => {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return getDateKey(date);
+};
+
+const calculateGoalStreak = (history = {}) => {
+  let streak = 0;
+  let offset = history[getPastDateKey(0)]?.completed ? 0 : 1;
+
+  while (history[getPastDateKey(offset)]?.completed) {
+    streak += 1;
+    offset += 1;
+  }
+
+  return streak;
+};
+
+const calculateBestStreak = (history = {}) => {
+  const completedDates = Object.keys(history)
+    .filter((date) => history[date]?.completed)
+    .sort();
+
+  if (!completedDates.length) return 0;
+
+  let best = 1;
+  let current = 1;
+
+  for (let i = 1; i < completedDates.length; i += 1) {
+    const previous = new Date(`${completedDates[i - 1]}T00:00:00`);
+    const currentDate = new Date(`${completedDates[i]}T00:00:00`);
+    const diff = Math.round((currentDate - previous) / 86400000);
+
+    if (diff === 1) {
+      current += 1;
+      best = Math.max(best, current);
+    } else {
+      current = 1;
+    }
+  }
+
+  return best;
+};
+
+const getActivityScore = (record) => {
+  if (!record) return 0;
+
+  const steps = Math.min(Number(record.steps) || 0, 10000) / 10000;
+  const exercise = Math.min(Number(record.exerciseMinutes) || 0, 60) / 60;
+  const sleep = Math.min(Number(record.sleepHours) || 0, 8) / 8;
+  const water = Math.min(Number(record.waterIntake) || 0, 3) / 3;
+  const workout = record.workoutCompleted ? 1 : 0;
+
+  return Math.round(
+    steps * 35 + exercise * 25 + sleep * 15 + water * 15 + workout * 10
+  );
+};
+
 function Dashboard() {
   const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+const [trackingRecords, setTrackingRecords] = useState([]);
    // E6 Nutrition Intelligence
   const [nutritionData, setNutritionData] = useState(null);
   const [nutritionLoading, setNutritionLoading] = useState(false);
@@ -61,64 +129,39 @@ const [anomalyResult, setAnomalyResult] = useState(null);
 const [anomalyLoading, setAnomalyLoading] = useState(false);
 const [anomalyError, setAnomalyError] = useState(null);
 const toggleGoal = async (goal) => {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const previousGoals = goals;
 
   const updatedGoals = {
     ...goals,
-    [goal]: !goals[goal]
+    [goal]: !goals[goal],
   };
 
   setGoals(updatedGoals);
 
-  const user = auth.currentUser;
+  try {
+    await updateDailyGoals(user.uid, updatedGoals);
 
-  if (user) {
+    const completed = Object.values(updatedGoals).every(Boolean);
+    setTodayCompleted(completed);
 
-    await updateDailyGoals(
-      user.uid,
-      updatedGoals
-    );
+    // Recalculate streak from Firestore
+    const streakData = await getStreakData(user.uid);
 
+    setStreak(streakData.currentStreak);
+    setBestStreak(streakData.bestStreak);
 
-    const completed = Object.values(updatedGoals)
-      .every(value => value === true);
+  } catch (error) {
+    console.error("Unable to save daily goal:", error);
 
+    setGoals(previousGoals);
 
-    if(completed){
-
-  setTodayCompleted(true);
-
-  const userRef = auth.currentUser;
-
-  if(userRef){
-
-    await updateTodayCompletion(
-      userRef.uid,
-      true
-    );
-
+    alert("Unable to save this goal. Please try again.");
   }
-
-}
-else{
-
-  setTodayCompleted(false);
-
-  const userRef = auth.currentUser;
-
-  if(userRef){
-
-    await updateTodayCompletion(
-      userRef.uid,
-      false
-    );
-
-  }
-
-}
-
-  }
-
 };
+
 const loadNutritionData = async () => {
   if (!profile) return;
 
@@ -259,6 +302,7 @@ setDailyTrackingRecorded(!!trackingData);
 
 // Get tracking records
 const trackingRecords = await getWeeklyTracking(user.uid);
+setTrackingRecords(trackingRecords);
 console.log("FIS TRACKING RECORDS:", trackingRecords);
 const behaviorData = await analyzeBehavior(trackingRecords);
 
@@ -483,29 +527,22 @@ const today = getTodayDate();
     };
 
     if (data.goalDate === today) {
-
-      // Same day → keep today's goals
       setGoals(data.dailyGoals || defaultGoals);
-      setTodayCompleted(data.todayCompleted || false);
-
+      setTodayCompleted(Boolean(data.todayCompleted));
     } else {
-
-      // New day → reset goals
       setGoals(defaultGoals);
       setTodayCompleted(false);
+      await updateDailyGoals(user.uid, defaultGoals);
+      const streakData = await getStreakData(user.uid);
 
-      await updateDailyGoals(
-        user.uid,
-        defaultGoals
-      );
-
-      await updateTodayCompletion(
-        user.uid,
-        false
-      );
+setStreak(streakData.currentStreak);
+setBestStreak(streakData.bestStreak);
     }
 
-    setStreak(data.streak || 0);
+    const streakData = await getStreakData(user.uid);
+
+setStreak(streakData.currentStreak);
+setBestStreak(streakData.bestStreak);
   }
 
   fetchProfile();
@@ -552,274 +589,416 @@ return () => {
 
   {activePage === "dashboard" && (
     <>
-      <h1 className="text-5xl font-heading font-bold text-textPrimary">
-        Welcome back, {profile?.name || "there"} 👋
-      </h1>
-
-      <p className="text-xl text-textSecondary mt-4">
-        Your personalized fitness journey starts here.
-      </p>
-
-     {profile && (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 max-w-3xl mx-auto">
-   {/* Daily Check-in */}
-
-<div className="bg-white p-6 rounded-2xl shadow-card">
-
-  <h2 className="text-xl font-bold">
-    📅 Daily Check-in
-  </h2>
-
-  {dailyTrackingRecorded ? (
-
-    <>
-      <p className="text-green-600 font-semibold mt-4">
-        🟢 Recorded today
-      </p>
-
-      <p className="text-textSecondary mt-2">
-        Your daily health data has been recorded.
-      </p>
-    </>
-
-  ) : (
-
-    <>
-      <p className="text-orange-600 font-semibold mt-4">
-        ⚪ Not recorded today
-      </p>
-
-      <p className="text-textSecondary mt-2">
-        Complete today's tracking to keep your data up to date.
-      </p>
-
-      <button
-        onClick={() => setActivePage("tracking")}
-        className="bg-primary text-white px-5 py-3 rounded-xl mt-4"
-      >
-        Complete Today's Tracking
-      </button>
-    </>
-
-  )}
-
-  {/* Last 7 Days */}
-
-  <div className="mt-6 pt-4 border-t">
-
-    <h3 className="font-bold mb-4">
-      📊 Last 7 Days
-    </h3>
-
-    <div className="grid grid-cols-7 gap-2">
-
-      {last7DaysTracking.map((day) => {
-
-        const date = new Date(`${day.date}T00:00:00`);
-
-        const dayName = date.toLocaleDateString("en-US", {
-          weekday: "short"
-        });
-
-        return (
-          <div
-            key={day.date}
-            className="text-center"
-          >
-
-            <p className="text-sm font-semibold">
-              {dayName}
+      <div className="max-w-7xl mx-auto text-left">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+          <div>
+            <p className="text-sm font-semibold text-primary uppercase tracking-wide">
+              E7 • Fitness Intelligence Dashboard
             </p>
-
-            <p className="text-xl mt-1">
-              {day.recorded ? "🟢" : "⚪"}
+            <h1 className="text-4xl md:text-5xl font-heading font-bold text-textPrimary mt-2">
+              Welcome back, {profile?.name || "there"} 👋
+            </h1>
+            <p className="text-base md:text-lg text-textSecondary mt-2">
+              See your progress, understand your trends, and know what to focus on today.
             </p>
-
           </div>
-        );
 
-      })}
+          <button
+            onClick={() => setActivePage("tracking")}
+            className="self-start lg:self-auto bg-primary text-white px-5 py-3 rounded-xl font-semibold hover:bg-orange-700 transition shadow-sm"
+          >
+            + Daily Check-in
+          </button>
+        </div>
 
-    </div>
+        {profile && (
+          <>
+            {/* Snapshot */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+              <div className="bg-white rounded-2xl shadow-card p-5 border border-orange-50">
+                <p className="text-sm text-textSecondary">Fitness Score</p>
+                <p className="text-3xl font-bold text-primary mt-2">
+                  {fisResult?.fis ?? "—"}<span className="text-base text-gray-400">/100</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">E1 FIS</p>
+              </div>
 
-    <p className="text-2xl text-primary font-bold mt-5">
-      {trackingDays} / 7 days
-    </p>
+              <div className="bg-white rounded-2xl shadow-card p-5">
+                <p className="text-sm text-textSecondary">Weekly Tracking</p>
+                <p className="text-3xl font-bold text-primary mt-2">
+                  {trackingDays}<span className="text-base text-gray-400">/7</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{trackingConsistency}% recorded</p>
+              </div>
 
-    <p className="text-textSecondary mt-1">
-      Tracking consistency: {trackingConsistency}%
-    </p>
+              <div className="bg-white rounded-2xl shadow-card p-5">
+                <p className="text-sm text-textSecondary">BMI</p>
+                <p className="text-3xl font-bold text-primary mt-2">{profile.bodyAnalysis?.bmi ?? "—"}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {profile.bodyAnalysis?.category || "Body composition"}
+                </p>
+              </div>
 
-  </div>
+              <div className="bg-primary text-white rounded-2xl shadow-card p-5">
+                <p className="text-sm opacity-80">Current Streak</p>
+                <p className="text-4xl font-bold mt-2">{streak}</p>
+                <p className="text-xs opacity-80 mt-1">days</p>
+              </div>
+            </div>
 
-</div>
-    {/* Health Score */}
-    <div className="bg-white p-6 rounded-2xl shadow-card">
-      <h2 className="text-xl font-bold">
-        ❤️ Health Score
-      </h2>
+            {/* Health + profile */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <div className="bg-white rounded-2xl shadow-card p-5 border border-green-100">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-textSecondary">Health Assessment</p>
+                  <span className="text-xl">❤️</span>
+                </div>
+                <p className="text-3xl font-bold text-green-600 mt-2">{healthScore}/100</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {healthScore >= 85 ? "Excellent" : healthScore >= 70 ? "Good" : healthScore >= 50 ? "Needs improvement" : "Complete your assessment"}
+                </p>
+                <button
+                  onClick={() => navigate("/health-assessment?update=true")}
+                  className="mt-4 w-full bg-green-500 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-green-600 transition"
+                >
+                  Update Health Assessment
+                </button>
+              </div>
 
-      <p className="text-4xl font-bold text-primary mt-4">
-  {healthScore}/100
-</p>
-<p className="mt-2 font-semibold">
-  {healthScore >= 85
-    ? "Excellent"
-    : healthScore >= 70
-    ? "Good"
-    : healthScore >= 50
-    ? "Needs Improvement"
-    : "Poor"}
-</p>
- <button
-    onClick={() => navigate("/health-assessment?update=true")}
-    className="bg-green-500 text-white px-5 py-3 rounded-xl mt-4"
-  >
-    Update Health Assessment
-  </button>
-      <p className="text-textSecondary mt-2">
-        Based on your lifestyle and fitness habits
-      </p>
-    </div>
+              <div className="bg-white rounded-2xl shadow-card p-5">
+                <p className="text-sm text-textSecondary">Weight</p>
+                <p className="text-3xl font-bold text-primary mt-2">
+                  {profile.weight ?? "—"}<span className="text-base text-gray-400"> kg</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">Current profile weight</p>
+              </div>
 
+              <div className="bg-white rounded-2xl shadow-card p-5">
+                <p className="text-sm text-textSecondary">Activity Level</p>
+                <p className="text-xl font-bold text-primary mt-3 capitalize">
+                  {profile.activityLevel || "Not set"}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">From your profile</p>
+              </div>
+            </div>
 
-    {/* BMI */}
-    <div className="bg-white p-6 rounded-2xl shadow-card">
-      <h2 className="text-xl font-bold">
-        📊 BMI
-      </h2>
+            {/* 7-day activity */}
+            <div className="bg-white rounded-2xl shadow-card p-6 mt-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold">📈 7-Day Activity</h2>
+                  <p className="text-sm text-textSecondary mt-1">
+                    Daily steps from your latest tracking records.
+                  </p>
+                </div>
+                <span className="text-sm font-bold text-primary">{trackingDays}/7 tracked</span>
+              </div>
 
-      <p className="text-3xl text-primary mt-4">
-        {profile.bodyAnalysis?.bmi || "N/A"}
-      </p>
+              <div className="mt-7 h-48 flex items-end gap-2 sm:gap-3">
+                {(last7DaysTracking.length
+                  ? last7DaysTracking
+                  : Array.from({ length: 7 }, (_, i) => ({
+                      date: getPastDateKey(6 - i),
+                      recorded: false
+                    }))
+                ).map((day) => {
+                  const record = trackingRecords.find((item) => item.date === day.date);
+                  const steps = Number(record?.steps || 0);
+                  const weekRecords = last7DaysTracking.map((d) =>
+                    Number(trackingRecords.find((r) => r.date === d.date)?.steps || 0)
+                  );
+                  const maxSteps = Math.max(10000, ...weekRecords);
+                  const height = record ? Math.max(8, Math.min(100, (steps / maxSteps) * 100)) : 6;
+                  const date = new Date(`${day.date}T00:00:00`);
 
-      <p>
-        {profile.bodyAnalysis?.category}
-      </p>
-    </div>
+                  return (
+                    <div key={day.date} className="flex-1 h-full flex flex-col items-center justify-end gap-2">
+                      <span className="text-[10px] font-semibold text-gray-500">
+                        {record ? steps.toLocaleString() : "—"}
+                      </span>
+                      <div className="w-full max-w-14 h-32 bg-orange-50 rounded-xl overflow-hidden flex items-end">
+                        <div
+                          className={`w-full rounded-xl transition-all duration-700 ${
+                            record ? "bg-primary" : "bg-orange-100"
+                          }`}
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-textSecondary">
+                        {date.toLocaleDateString("en-US", { weekday: "short" })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
 
+              <p className="text-xs text-gray-400 mt-4">
+                Actual steps are shown here; missing tracking days remain empty.
+              </p>
+            </div>
 
-    {/* Weight */}
-    <div className="bg-white p-6 rounded-2xl shadow-card">
-      <h2 className="text-xl font-bold">
-        ⚖️ Weight
-      </h2>
+            {/* FIS breakdown */}
+            <div className="bg-white rounded-2xl shadow-card p-6 mt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">❤️ Fitness Score Breakdown</h2>
+                  <p className="text-sm text-textSecondary mt-1">
+                    The five E1 dimensions behind your score.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActivePage("analytics")}
+                  className="text-sm font-semibold text-primary hover:underline"
+                >
+                  View analytics →
+                </button>
+              </div>
 
-      <p className="text-3xl text-primary mt-4">
-        {profile.weight} kg
-      </p>
-    </div>
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                {[
+                  ["🏃", "Fitness & Activity", fisResult?.fitnessActivity?.score],
+                  ["😴", "Recovery", fisResult?.recovery?.score],
+                  ["⚖️", "Body Composition", fisResult?.bodyComposition?.score],
+                  ["🥗", "Nutrition", fisResult?.nutrition?.score],
+                  ["🔥", "Consistency", fisResult?.consistency?.score]
+                ].map(([icon, label, score]) => (
+                  <div key={label}>
+                    <div className="flex justify-between text-sm mb-1.5">
+                      <span className="font-medium">{icon} {label}</span>
+                      <span className="font-bold text-primary">
+                        {score == null ? "—" : Math.round(score)}
+                      </span>
+                    </div>
+                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-700"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, Number(score) || 0))}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
+            {/* 365-day Fitness Pulse */}
+            <div className="bg-white rounded-2xl shadow-card p-6 mt-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold">🟠 Fitness Pulse</h2>
+                  <p className="text-sm text-textSecondary mt-1">
+                    365-day activity calendar. Darker cells mean stronger daily activity.
+                  </p>
+                </div>
+                <div className="text-sm text-gray-500">365-day history</div>
+              </div>
 
-    {/* Activity */}
-    <div className="bg-white p-6 rounded-2xl shadow-card">
-      <h2 className="text-xl font-bold">
-        🏃 Activity
-      </h2>
+              <div className="mt-6 overflow-x-auto pb-2">
+                <div className="min-w-[760px] grid grid-cols-12 gap-2">
+                  {Array.from({ length: 12 }, (_, monthIndex) => {
+                    const now = new Date();
+                    const monthDate = new Date(now.getFullYear(), now.getMonth() - 11 + monthIndex, 1);
+                    const year = monthDate.getFullYear();
+                    const month = monthDate.getMonth();
+                    const monthName = monthDate.toLocaleDateString("en-US", { month: "short" });
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-      <p className="text-xl mt-4">
-        {profile.activityLevel}
-      </p>
-    </div>
+                    return (
+                      <div key={`${year}-${month}`} className="min-w-0">
+                        <p className="text-[11px] font-semibold text-gray-500 text-center mb-2">
+                          {monthName}
+                        </p>
+                        <div className="grid grid-cols-4 gap-1">
+                          {Array.from({ length: daysInMonth }, (_, dayIndex) => {
+                            const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayIndex + 1).padStart(2, "0")}`;
+                            const record = trackingRecords.find((item) => item.date === dateKey);
+                            const score = getActivityScore(record);
+                            const level = !record
+                              ? 0
+                              : score < 25
+                              ? 1
+                              : score < 55
+                              ? 2
+                              : score < 80
+                              ? 3
+                              : 4;
 
+                            const cellClasses = [
+                              "bg-gray-100",
+                              "bg-orange-100",
+                              "bg-orange-200",
+                              "bg-orange-300",
+                              "bg-primary"
+                            ];
 
-    {/* Streak */}
-<div className="bg-white p-6 rounded-2xl shadow-card">
+                            const date = new Date(`${dateKey}T00:00:00`);
 
-  <h2 className="text-xl font-bold">
-    🔥 Fitness Streak
-  </h2>
+                            return (
+                              <div
+                                key={dateKey}
+                                title={`${date.toLocaleDateString("en-US", {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric"
+                                })} • ${record ? `${score}% activity` : "No tracking"}`}
+                                className={`h-3.5 rounded-sm ${cellClasses[level]} hover:ring-2 hover:ring-orange-200 transition`}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
- <p className="text-3xl text-primary mt-4">
-  {todayCompleted ? streak + 1 : streak} Days
-</p>
+              <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                <span>Less</span>
+                {[
+                  "bg-gray-100",
+                  "bg-orange-100",
+                  "bg-orange-200",
+                  "bg-orange-300",
+                  "bg-primary"
+                ].map((color) => (
+                  <span key={color} className={`w-3.5 h-3.5 rounded-sm ${color}`} />
+                ))}
+                <span>More</span>
+              </div>
+            </div>
 
-  <p className="mt-2">
-    Today's completion:
-  </p>
+            {/* Goals + weekly overview */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              <div className="bg-gradient-to-br from-orange-50 to-white rounded-2xl shadow-card p-6 border border-orange-100">
+                <p className="text-sm font-semibold text-primary uppercase tracking-wide">
+                  Today’s Goals
+                </p>
+                <h2 className="text-2xl font-bold mt-2">Choose what you complete today.</h2>
+                <p className="text-sm text-textSecondary mt-2">
+                  Your selections are saved and restored after refresh.
+                </p>
 
-  <p className="text-xl font-semibold">
-    {
-      Math.round(
-        (Object.values(goals).filter(Boolean).length / 4) * 100
-      )
-    }%
-  </p>
+                <div className="mt-5 space-y-3">
+                  {[
+                    ["water", "💧", "Reach your water target"],
+                    ["workout", "🏃", "Complete your workout"],
+                    ["steps", "👣", "Reach your daily steps"],
+                    ["sleep", "😴", "Meet your sleep target"]
+                  ].map(([key, icon, label]) => (
+                    <label
+                      key={key}
+                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                        goals[key]
+                          ? "bg-green-50 border-green-200"
+                          : "bg-white border-orange-100 hover:border-orange-200"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(goals[key])}
+                        onChange={() => toggleGoal(key)}
+                        className="w-4 h-4 accent-orange-600"
+                      />
+                      <span className="text-lg">{icon}</span>
+                      <span
+                        className={`text-sm font-medium ${
+                          goals[key] ? "text-green-700 line-through" : "text-gray-700"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
 
-</div>
+                <div className="mt-4 flex items-center justify-between text-sm">
+                  <span className="text-textSecondary">Today’s completion</span>
+                  <span className="font-bold text-primary">
+                    {Object.values(goals).filter(Boolean).length}/4
+                  </span>
+                </div>
+              </div>
 
-<div className="bg-white p-6 rounded-2xl shadow-card">
+              <div className="bg-white rounded-2xl shadow-card p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold">📊 Weekly Overview</h2>
+                    <p className="text-sm text-textSecondary mt-1">
+                      How well you met your weekly targets.
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-primary">{trackingDays}/7 days</span>
+                </div>
 
-<h2 className="text-xl font-bold">
-✅ Today's Goals
-</h2>
+                {(() => {
+                  const recent = last7DaysTracking
+                    .map((day) => trackingRecords.find((item) => item.date === day.date))
+                    .filter(Boolean);
 
-<div className="mt-4 space-y-4 text-left">
+                  const avgSteps = recent.length
+                    ? Math.round(recent.reduce((sum, r) => sum + (Number(r.steps) || 0), 0) / recent.length)
+                    : 0;
+                  const avgWater = recent.length
+                    ? recent.reduce((sum, r) => sum + (Number(r.waterIntake) || 0), 0) / recent.length
+                    : 0;
+                  const avgSleep = recent.length
+                    ? recent.reduce((sum, r) => sum + (Number(r.sleepHours) || 0), 0) / recent.length
+                    : 0;
+                  const workoutDays = recent.filter(
+                    (r) => r.workoutCompleted || Number(r.exerciseMinutes || 0) >= 30
+                  ).length;
 
-  <label className="flex items-center gap-3">
-    <input
-      type="checkbox"
-      checked={goals.water}
-      onChange={() => toggleGoal("water")}
-    />
-    <span>Drink enough water</span>
-  </label>
+                  const metrics = [
+                    ["👣", "Steps", `${avgSteps.toLocaleString()}/day`, Math.min(100, Math.round((avgSteps / 7500) * 100))],
+                    ["💧", "Water", `${avgWater.toFixed(1)} L/day`, Math.min(100, Math.round((avgWater / 2) * 100))],
+                    ["😴", "Sleep", `${avgSleep.toFixed(1)} h/day`, Math.min(100, Math.round((avgSleep / 7) * 100))],
+                    ["🏃", "Exercise", `${workoutDays}/7 days`, Math.min(100, Math.round((workoutDays / 5) * 100))]
+                  ];
 
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                      {metrics.map(([icon, label, value, percent]) => (
+                        <div key={label} className="rounded-xl bg-gray-50 p-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-semibold">{icon} {label}</span>
+                            <span className="text-xs font-bold text-primary">{percent}%</span>
+                          </div>
+                          <p className="text-lg font-bold mt-2">{value}</p>
+                          <div className="h-2 bg-gray-200 rounded-full mt-3 overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
 
-  <label className="flex items-center gap-3">
-    <input
-      type="checkbox"
-      checked={goals.workout}
-      onChange={() => toggleGoal("workout")}
-    />
-    <span>Complete workout</span>
-  </label>
-
-
-  <label className="flex items-center gap-3">
-    <input
-      type="checkbox"
-      checked={goals.steps}
-      onChange={() => toggleGoal("steps")}
-    />
-    <span>Walk daily steps</span>
-  </label>
-
-
-  <label className="flex items-center gap-3">
-    <input
-      type="checkbox"
-      checked={goals.sleep}
-      onChange={() => toggleGoal("sleep")}
-    />
-    <span>Maintain sleep target</span>
-  </label>
-
-</div>
-
-</div>
-{/* Daily Progress */}
-<div className="bg-white p-6 rounded-2xl shadow-card">
-
-  <h2 className="text-xl font-bold">
-    📈 Today's Progress
-  </h2>
-
-  <p className="text-3xl text-primary mt-4">
-    {
-      Object.values(goals).filter(Boolean).length
-    } / 4
-  </p>
-
-  <p className="mt-2">
-    Goals Completed
-  </p>
-
-</div>
-  
-  </div>
-)}
-
+            {/* E7 recommendations */}
+            <div className="bg-white rounded-2xl shadow-card p-6 mt-6">
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div>
+                  <p className="text-sm font-semibold text-primary uppercase tracking-wide">
+                    E7 • Personalized Recommendations
+                  </p>
+                  <h2 className="text-2xl font-bold mt-1">What should you do next?</h2>
+                  <p className="text-sm text-textSecondary mt-1">
+                    Personalized actions based on your FitIQ data.
+                  </p>
+                </div>
+                <span className="text-2xl">🎯</span>
+              </div>
+              <Recommendation />
+            </div>
+          </>
+        )}
+      </div>
     </>
   )}
 
@@ -3194,18 +3373,9 @@ return () => {
   </div>
 )}
 
-  {activePage === "workout" && (
-    <h1 className="text-4xl font-bold">
-      Workout
-    </h1>
-  )}
   {activePage === "tracking" && (
-  <DailyTracking />
-)}
-
-{activePage === "recommendations" && (
-   <Recommendation />
-)}
+    <DailyTracking />
+  )}
 
 </div>
 
