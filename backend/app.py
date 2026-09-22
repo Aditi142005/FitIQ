@@ -47,6 +47,7 @@ from engines.e5_anomaly_engine import (
     analyze_e5,
     analyze_user_activity
 )
+from engines.nutrition_engine import analyze_nutrition
 from llm_service import generate_behavior_insights
 app = Flask(__name__)
 CORS(app)
@@ -427,6 +428,24 @@ def anomaly_analysis():
             "status": "error",
             "message":
                 "Unable to analyze your activity pattern."
+        }), 500
+
+@app.route("/nutrition", methods=["POST"])
+def nutrition_analysis():
+    try:
+        data = request.get_json(silent=True) or {}
+
+        result = analyze_nutrition(data)
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print("E6 nutrition analysis error:", str(e))
+
+        return jsonify({
+            "status": "error",
+            "message": "Unable to generate nutrition recommendations.",
+            "error": str(e)
         }), 500
 
 @app.route("/recommendations", methods=["POST"])

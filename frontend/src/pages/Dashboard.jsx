@@ -19,6 +19,7 @@ import { getPrediction } from "../services/predictionService";
 import { getConsistencyPrediction } from "../services/consistencyPredictionService";
 import { getCohortAnalysis } from "../services/cohortService";
 import { getAnomalyAnalysis } from "../services/anomalyService";
+
 const getTodayDate = () => {
   const today = new Date();
 
@@ -30,6 +31,11 @@ const getTodayDate = () => {
 };
 function Dashboard() {
   const [streak, setStreak] = useState(0);
+   // E6 Nutrition Intelligence
+  const [nutritionData, setNutritionData] = useState(null);
+  const [nutritionLoading, setNutritionLoading] = useState(false);
+  const [nutritionError, setNutritionError] = useState("");
+
   const [todayCompleted, setTodayCompleted] = useState(false);
   const [dailyTrackingRecorded, setDailyTrackingRecorded] = useState(false);
   const [trackingDays, setTrackingDays] = useState(0);
@@ -113,6 +119,56 @@ else{
   }
 
 };
+const loadNutritionData = async () => {
+  if (!profile) return;
+
+  try {
+    setNutritionLoading(true);
+    setNutritionError("");
+
+    const response = await fetch(
+      "http://127.0.0.1:5000/nutrition",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          age: Number(profile.age),
+          gender: profile.gender,
+          height_cm: Number(profile.height),
+          weight_kg: Number(profile.weight),
+          activity_level: profile.activityLevel || "moderate",
+          goal: profile.goal || "maintenance",
+          diet_type: profile.dietPreference || "mixed",
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || data.status !== "success") {
+      throw new Error(
+        data.message || "Unable to generate nutrition recommendations."
+      );
+    }
+
+    console.log("E6 NUTRITION RESULT:", data);
+
+    setNutritionData(data);
+
+  } catch (error) {
+
+    console.error("E6 Nutrition Error:", error);
+
+    setNutritionError(
+      error.message || "Unable to generate nutrition recommendations."
+    );
+
+  } finally {
+    setNutritionLoading(false);
+  }
+};
   const navigate = useNavigate();
 
   const [activePage, setActivePage] = useState("dashboard");
@@ -135,7 +191,69 @@ console.log("PROFILE DATA FROM FIRESTORE:", data);
     console.log(data);
 
     setProfile(data);
-    const trackingData = await getDailyTracking(user.uid);
+
+// E6 Nutrition Intelligence
+try {
+  setNutritionLoading(true);
+
+  const nutritionInput = {
+    age: Number(data.age),
+    gender: data.gender,
+    height_cm: Number(data.height),
+    weight_kg: Number(data.weight),
+    activity_level: data.activityLevel || "moderate",
+    goal: data.goal || "maintenance",
+    diet_type: data.dietPreference || "mixed",
+  };
+
+  console.log("E6 NUTRITION INPUT:", nutritionInput);
+
+  const nutritionResponse = await fetch(
+    "http://127.0.0.1:5000/nutrition",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(nutritionInput),
+    }
+  );
+
+  const nutritionResult = await nutritionResponse.json();
+
+  if (!nutritionResponse.ok || nutritionResult.status !== "success") {
+    throw new Error(
+      nutritionResult.message ||
+      "Unable to generate nutrition recommendations."
+    );
+  }
+
+  console.log(
+    "E6 NUTRITION RESULT:",
+    nutritionResult
+  );
+
+  setNutritionData(nutritionResult);
+
+} catch (error) {
+
+  console.error(
+    "E6 Nutrition analysis failed:",
+    error
+  );
+
+  setNutritionError(
+    error.message ||
+    "Unable to generate nutrition recommendations."
+  );
+
+} finally {
+
+  setNutritionLoading(false);
+
+}
+
+const trackingData = await getDailyTracking(user.uid);
 
 setDailyTrackingRecorded(!!trackingData);
 
@@ -2535,60 +2653,545 @@ return () => {
 )}
 
   {activePage === "nutrition" && (
-  <>
-    <h1 className="text-4xl font-bold mb-8">
-      🥗 Nutrition
-    </h1>
+  <div className="max-w-6xl mx-auto">
 
-    {profile && (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+    {/* Header */}
+    <div className="mb-8">
+      <h1 className="text-4xl font-bold mb-2">
+        🥗 Nutrition Intelligence
+      </h1>
 
-        <div className="bg-white p-6 rounded-2xl shadow-card">
-          <h2 className="text-xl font-bold">
-            🔥 Daily Calories
-          </h2>
+      <p className="text-gray-500">
+        Personalized nutrition recommendations based on your profile,
+        fitness goal, diet preference, and USDA nutrition data.
+      </p>
+    </div>
 
-          <p className="text-3xl text-primary mt-4">
-            {profile.bodyAnalysis?.tdee || "N/A"} kcal
-          </p>
+    {/* Loading */}
+    {nutritionLoading && (
+      <div className="bg-white rounded-2xl shadow-card p-10 text-center">
+        <div className="text-4xl mb-4 animate-pulse">
+          🥗
         </div>
 
+        <h2 className="text-xl font-bold">
+          Analyzing your nutrition...
+        </h2>
 
-        <div className="bg-white p-6 rounded-2xl shadow-card">
-          <h2 className="text-xl font-bold">
-            💧 Water Intake
-          </h2>
-
-          <p className="text-3xl text-primary mt-4">
-            {profile.waterIntake || 0} L
-          </p>
-        </div>
-
-
-        <div className="bg-white p-6 rounded-2xl shadow-card">
-          <h2 className="text-xl font-bold">
-            🍽 Meals Per Day
-          </h2>
-
-          <p className="text-3xl text-primary mt-4">
-            {profile.mealsPerDay || "N/A"}
-          </p>
-        </div>
-
-
-        <div className="bg-white p-6 rounded-2xl shadow-card">
-          <h2 className="text-xl font-bold">
-            🥦 Diet Preference
-          </h2>
-
-          <p className="text-xl mt-4">
-            {profile.dietPreference}
-          </p>
-        </div>
-
+        <p className="text-gray-500 mt-2">
+          Calculating your targets and finding suitable foods.
+        </p>
       </div>
     )}
-  </>
+
+    {/* Error */}
+    {!nutritionLoading && nutritionError && (
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-red-600">
+          Nutrition analysis failed
+        </h2>
+
+        <p className="text-red-500 mt-2">
+          {nutritionError}
+        </p>
+
+        <button
+          onClick={loadNutritionData}
+          className="mt-4 px-5 py-2 rounded-xl bg-primary text-white font-semibold hover:opacity-90"
+        >
+          Try Again
+        </button>
+      </div>
+    )}
+
+    {/* Nutrition Results */}
+    {!nutritionLoading && !nutritionError && nutritionData && (
+      <>
+
+        {/* Top Target Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+          {/* Calories */}
+          <div className="bg-white rounded-2xl shadow-card p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500">
+                  Daily Calories
+                </p>
+
+                <h2 className="text-3xl font-bold text-primary mt-2">
+                  {nutritionData.targets.calorie_target}
+                </h2>
+
+                <p className="text-sm text-gray-400 mt-1">
+                  kcal / day
+                </p>
+              </div>
+
+              <div className="text-4xl">
+                🔥
+              </div>
+            </div>
+          </div>
+
+
+          {/* Protein */}
+          <div className="bg-white rounded-2xl shadow-card p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500">
+                  Protein Target
+                </p>
+
+                <h2 className="text-3xl font-bold text-primary mt-2">
+                  {nutritionData.macro_distribution.protein_g}
+                </h2>
+
+                <p className="text-sm text-gray-400 mt-1">
+                  grams / day
+                </p>
+              </div>
+
+              <div className="text-4xl">
+                💪
+              </div>
+            </div>
+          </div>
+
+
+          {/* Water */}
+          <div className="bg-white rounded-2xl shadow-card p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500">
+                  Water Target
+                </p>
+
+                <h2 className="text-3xl font-bold text-primary mt-2">
+                  {nutritionData.targets.water_liters}
+                </h2>
+
+                <p className="text-sm text-gray-400 mt-1">
+                  liters / day
+                </p>
+              </div>
+
+              <div className="text-4xl">
+                💧
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+
+        {/* Body / Target Summary */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+          {/* Energy Summary */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-card p-6">
+
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-bold">
+                  ⚡ Energy Target
+                </h2>
+
+                <p className="text-gray-500 text-sm mt-1">
+                  Based on your estimated daily energy needs
+                </p>
+              </div>
+
+              <span className="px-3 py-1 bg-orange-100 text-primary rounded-full text-sm font-semibold">
+                {nutritionData.diet_type}
+              </span>
+            </div>
+
+
+            <div className="grid grid-cols-2 gap-4">
+
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-sm text-gray-500">
+                  BMR
+                </p>
+
+                <p className="text-2xl font-bold mt-1">
+                  {nutritionData.targets.bmr}
+                  <span className="text-sm font-normal text-gray-500">
+                    {" "}kcal
+                  </span>
+                </p>
+              </div>
+
+
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-sm text-gray-500">
+                  TDEE
+                </p>
+
+                <p className="text-2xl font-bold mt-1">
+                  {nutritionData.targets.tdee}
+                  <span className="text-sm font-normal text-gray-500">
+                    {" "}kcal
+                  </span>
+                </p>
+              </div>
+
+            </div>
+
+          </div>
+
+
+          {/* Profile Summary */}
+          <div className="bg-white rounded-2xl shadow-card p-6">
+
+            <h2 className="text-xl font-bold mb-5">
+              👤 Your Plan
+            </h2>
+
+            <div className="space-y-4">
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Goal
+                </p>
+
+                <p className="font-semibold capitalize">
+                  {profile?.goal || "Maintenance"}
+                </p>
+              </div>
+
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Diet
+                </p>
+
+                <p className="font-semibold capitalize">
+                  {nutritionData.diet_type}
+                </p>
+              </div>
+
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Meals / Day
+                </p>
+
+                <p className="font-semibold">
+                  {profile?.mealsPerDay || "N/A"}
+                </p>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {/* Macro Breakdown */}
+        <div className="bg-white rounded-2xl shadow-card p-6 mb-8">
+
+          <div className="mb-6">
+            <h2 className="text-xl font-bold">
+              🍽 Daily Macro Targets
+            </h2>
+
+            <p className="text-gray-500 text-sm mt-1">
+              Your recommended macronutrient distribution
+            </p>
+          </div>
+
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+            {/* Protein */}
+            <div className="border rounded-2xl p-5">
+
+              <div className="flex justify-between items-center">
+                <span className="font-semibold">
+                  💪 Protein
+                </span>
+
+                <span className="text-primary font-bold">
+                  {nutritionData.macro_distribution.protein_g} g
+                </span>
+              </div>
+
+              <div className="mt-4 h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full"
+                  style={{ width: "30%" }}
+                />
+              </div>
+
+              <p className="text-xs text-gray-500 mt-2">
+                Supports muscle maintenance and recovery
+              </p>
+
+            </div>
+
+
+            {/* Carbs */}
+            <div className="border rounded-2xl p-5">
+
+              <div className="flex justify-between items-center">
+                <span className="font-semibold">
+                  ⚡ Carbohydrates
+                </span>
+
+                <span className="text-primary font-bold">
+                  {nutritionData.macro_distribution.carbs_g} g
+                </span>
+              </div>
+
+              <div className="mt-4 h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full"
+                  style={{ width: "40%" }}
+                />
+              </div>
+
+              <p className="text-xs text-gray-500 mt-2">
+                Provides energy for daily activity
+              </p>
+
+            </div>
+
+
+            {/* Fat */}
+            <div className="border rounded-2xl p-5">
+
+              <div className="flex justify-between items-center">
+                <span className="font-semibold">
+                  🥑 Healthy Fats
+                </span>
+
+                <span className="text-primary font-bold">
+                  {nutritionData.macro_distribution.fat_g} g
+                </span>
+              </div>
+
+              <div className="mt-4 h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full"
+                  style={{ width: "30%" }}
+                />
+              </div>
+
+              <p className="text-xs text-gray-500 mt-2">
+                Supports essential body functions
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {/* Personalized Insight */}
+        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 mb-8">
+
+          <div className="flex gap-4">
+
+            <div className="text-3xl">
+              🤖
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-card p-6">
+  <div className="flex items-center gap-3 mb-3">
+    <span className="text-2xl">💡</span>
+    <h2 className="text-xl font-bold">Nutrition Insight</h2>
+  </div>
+
+  <p className="text-gray-600 leading-relaxed">
+    {nutritionData.insight}
+  </p>
+</div>
+
+          </div>
+
+        </div>
+
+
+        {/* Recommended Foods */}
+        <div className="mb-8">
+
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold">
+              🥗 Recommended Foods
+            </h2>
+
+            <p className="text-gray-500 mt-1">
+              Foods selected from USDA FoodData Central based on your
+              nutrition profile and goal.
+            </p>
+          </div>
+
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+            {nutritionData.recommendations.map((food, index) => (
+
+              <div
+                key={`${food.food_name}-${index}`}
+                className="bg-white rounded-2xl shadow-card p-5 hover:-translate-y-1 transition-transform duration-200"
+              >
+
+                {/* Food Header */}
+                <div className="flex justify-between gap-3">
+
+                  <div>
+                    <h3 className="font-bold text-lg leading-tight">
+                      {food.food_name}
+                    </h3>
+
+                    <p className="text-xs text-gray-500 mt-1">
+                      {food.food_category}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0">
+                    <span className="px-2 py-1 rounded-full bg-orange-100 text-primary text-xs font-bold">
+                      {food.score}
+                    </span>
+                  </div>
+
+                </div>
+
+
+                {/* Nutrition */}
+                <div className="grid grid-cols-2 gap-3 mt-5">
+
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-500">
+                      Calories
+                    </p>
+
+                    <p className="font-bold">
+                      {food.calories} kcal
+                    </p>
+                  </div>
+
+
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-500">
+                      Protein
+                    </p>
+
+                    <p className="font-bold">
+                      {food.protein_g} g
+                    </p>
+                  </div>
+
+
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-500">
+                      Carbs
+                    </p>
+
+                    <p className="font-bold">
+                      {food.carbs_g} g
+                    </p>
+                  </div>
+
+
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-500">
+                      Fat
+                    </p>
+
+                    <p className="font-bold">
+                      {food.fat_g} g
+                    </p>
+                  </div>
+
+                </div>
+
+
+                {/* Extra nutrition */}
+                <div className="mt-4 pt-4 border-t">
+
+                  <div className="flex justify-between text-sm">
+
+                    <span className="text-gray-500">
+                      Fiber
+                    </span>
+
+                    <span className="font-semibold">
+                      {food.fiber_g} g
+                    </span>
+
+                  </div>
+
+                  <div className="flex justify-between text-sm mt-2">
+
+                    <span className="text-gray-500">
+                      Sugar
+                    </span>
+
+                    <span className="font-semibold">
+                      {food.sugar_g} g
+                    </span>
+
+                  </div>
+
+                  <div className="flex justify-between text-sm mt-2">
+
+                    <span className="text-gray-500">
+                      Sodium
+                    </span>
+
+                    <span className="font-semibold">
+                      {food.sodium_mg} mg
+                    </span>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            ))}
+
+          </div>
+
+        </div>
+
+
+        {/* Data Source */}
+        <div className="text-center text-xs text-gray-400 pb-6">
+          Nutrition recommendations powered by{" "}
+          {nutritionData.data_source}
+        </div>
+
+      </>
+    )}
+
+    {/* Initial state */}
+    {!nutritionLoading &&
+      !nutritionError &&
+      !nutritionData && (
+        <div className="bg-white rounded-2xl shadow-card p-8 text-center">
+
+          <div className="text-5xl mb-4">
+            🥗
+          </div>
+
+          <h2 className="text-xl font-bold">
+            Nutrition Intelligence
+          </h2>
+
+          <p className="text-gray-500 mt-2">
+            Your personalized nutrition analysis will appear here.
+          </p>
+
+        </div>
+      )}
+
+  </div>
 )}
 
   {activePage === "workout" && (
