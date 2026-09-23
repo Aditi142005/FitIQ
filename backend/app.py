@@ -69,6 +69,8 @@ def body_analysis():
     weight = data["weight"]
     activity = data["activityLevel"]
 
+    # ================= BODY ANALYSIS =================
+
     bmi = calculate_bmi(weight, height)
 
     category = bmi_category(bmi)
@@ -86,17 +88,9 @@ def body_analysis():
     )
 
     ideal_min, ideal_max = ideal_weight_range(height)
-    health_data = {
-    "bmi": bmi,
-    "sleepHours": data["sleepHours"],
-    "waterIntake": data["waterIntake"],
-    "dailySteps": data["dailySteps"],
-    "exerciseFrequency": data["exerciseFrequency"],
-    "stressLevel": data["stressLevel"]
-}
 
-    health_score = calculate_health_score(health_data)
-    print("Health Data Received:", health_data)
+    # ================= RESPONSE =================
+
     return jsonify({
         "bmi": bmi,
         "category": category,
@@ -105,9 +99,9 @@ def body_analysis():
         "idealWeight": {
             "min": ideal_min,
             "max": ideal_max
-        },
-        "healthScore": health_score
+        }
     })
+
 @app.route("/fis", methods=["POST"])
 def fis():
     data = request.get_json()

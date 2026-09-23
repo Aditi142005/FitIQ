@@ -51,14 +51,19 @@ export const getUserProfile = async (uid) => {
   return null;
 };
 
-
 export const updateUserProfile = async (uid, profileData) => {
   const userRef = doc(db, "users", uid);
 
-  await updateDoc(userRef, {
-    ...profileData,
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    userRef,
+    {
+      ...profileData,
+      updatedAt: serverTimestamp(),
+    },
+    {
+      merge: true,
+    }
+  );
 };
 
 
@@ -504,7 +509,6 @@ export const updateStreak = async (
 /* =========================================================
    HEALTH HISTORY
    ========================================================= */
-
 export const addHealthHistory = async (uid, healthData) => {
   const historyRef = collection(
     db,
@@ -513,8 +517,14 @@ export const addHealthHistory = async (uid, healthData) => {
     "healthHistory"
   );
 
+  const cleanedHealthData = Object.fromEntries(
+    Object.entries(healthData).filter(
+      ([, value]) => value !== undefined
+    )
+  );
+
   const document = await addDoc(historyRef, {
-    ...healthData,
+    ...cleanedHealthData,
     recordedAt: serverTimestamp(),
   });
 
