@@ -6,40 +6,49 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ProfileSetup from "./pages/ProfileSetup";
+import VerifyEmail from "./pages/VerifyEmail";
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-
-  <Route path="/" element={<Login />} />
-
-  <Route path="/signup" element={<Signup />} />
-    <Route path="/profile-setup" element={<ProfileSetup />} />
-    <Route 
-  path="/health-assessment" 
-  element={
-    <ProtectedRoute>
-      <HealthAssessment />
-    </ProtectedRoute>
-  }
-/>
-  <Route 
-    path="/forgot-password" 
-    element={<ForgotPassword />} 
-  />
-
-  <Route
-  path="/dashboard"
-  element={
-    <ProtectedRoute>
-      <Dashboard />
-    </ProtectedRoute>
-  }
-/>
-
-</Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route 
+          path="/profile-setup" 
+          element={
+            <ProtectedRoute>
+              <ProfileSetup />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/verify-email" 
+          element={<VerifyEmail />} 
+        />
+        <Route 
+          path="/health-assessment" 
+          element={
+            <ProtectedRoute>
+              <HealthAssessment />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/forgot-password" 
+          element={<ForgotPassword />} 
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
     </BrowserRouter>
   );
 }
 
-export default App;
+export default App;

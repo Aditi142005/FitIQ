@@ -20,6 +20,7 @@ import { getPrediction } from "../services/predictionService";
 import { getConsistencyPrediction } from "../services/consistencyPredictionService";
 import { getCohortAnalysis } from "../services/cohortService";
 import { getAnomalyAnalysis } from "../services/anomalyService";
+import { getComprehensiveInterpretation } from "../services/interpretationService";
 
 const getTodayDate = () => {
   const today = new Date();
@@ -128,6 +129,11 @@ const [cohortError, setCohortError] = useState(null);
 const [anomalyResult, setAnomalyResult] = useState(null);
 const [anomalyLoading, setAnomalyLoading] = useState(false);
 const [anomalyError, setAnomalyError] = useState(null);
+// Engine 7 — Comprehensive Interpretation
+const [interpretationResult, setInterpretationResult] = useState(null);
+const [interpretationLoading, setInterpretationLoading] = useState(false);
+const [interpretationError, setInterpretationError] = useState(null);
+const [techModeEnabled, setTechModeEnabled] = useState(false);
 const toggleGoal = async (goal) => {
   const user = auth.currentUser;
   if (!user) return;
@@ -309,6 +315,13 @@ const behaviorData = await analyzeBehavior(trackingRecords);
 console.log("BEHAVIOR RESULT:", behaviorData);
 
 setBehaviorResult(behaviorData);
+// Local refs to capture engine results for E7 interpretation
+// (React setState is async and won't reflect in the same execution frame)
+let _predictionData = null;
+let _consistencyData = null;
+let _cohortData = null;
+let _anomalyData = null;
+
 // ================= E3 PREDICTIVE ANALYTICS =================
 
 try {
@@ -387,6 +400,7 @@ try {
 
   console.log("E3 PREDICTION RESULT:", predictionData);
 
+  _predictionData = predictionData;
   setPredictionResult(predictionData);
   const consistencyData = await getConsistencyPrediction(
   trackingRecords
@@ -397,6 +411,7 @@ console.log(
   consistencyData
 );
 
+_consistencyData = consistencyData;
 setConsistencyPrediction(consistencyData);
 
 const cohortInput = {
@@ -431,6 +446,7 @@ console.log(
   cohortData
 );
 
+_cohortData = cohortData;
 setCohortResult(cohortData);
 setCohortLoading(false);
 setCohortError(null);
@@ -468,6 +484,7 @@ try {
 
   console.log("E5 ANOMALY RESULT:", anomalyData);
 
+  _anomalyData = anomalyData;
   setAnomalyResult(anomalyData);
 } catch (error) {
   console.error("E5 anomaly analysis failed:", error);
@@ -486,6 +503,48 @@ const fisData = await calculateFis(fisInput);
 console.log("FIS RESULT:", fisData);
 
 setFisResult(fisData);
+
+// ================= E7 COMPREHENSIVE INTERPRETATION =================
+try {
+  setInterpretationLoading(true);
+  setInterpretationError(null);
+
+  const nutritionSnapshot = await fetch("http://127.0.0.1:5000/nutrition", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      age: Number(data.age),
+      gender: data.gender,
+      height_cm: Number(data.height),
+      weight_kg: Number(data.weight),
+      activity_level: data.activityLevel || "moderate",
+      goal: data.goal || "maintenance",
+      diet_type: data.dietPreference || "mixed",
+    }),
+  });
+  const nutritionSnap = nutritionSnapshot.ok ? await nutritionSnapshot.json() : null;
+
+  const interpretData = await getComprehensiveInterpretation({
+    profile: data,
+    fisResult: fisData,
+    behaviorResult: behaviorData,
+    predictionResult: _predictionData,
+    consistencyPrediction: _consistencyData,
+    cohortResult: _cohortData,
+    anomalyResult: _anomalyData,
+    nutritionData: nutritionSnap,
+  });
+
+  console.log("E7 INTERPRETATION RESULT:", interpretData);
+  setInterpretationResult(interpretData);
+} catch (e7err) {
+  console.error("E7 Interpretation failed:", e7err);
+  setInterpretationError(
+    e7err.message || "Personalized explanation is temporarily unavailable."
+  );
+} finally {
+  setInterpretationLoading(false);
+}
 const last7Days = await getLast7DaysTracking(user.uid);
 
 setLast7DaysTracking(last7Days);
@@ -576,7 +635,7 @@ return () => {
   return (
   <div className="min-h-screen bg-background flex">
 
-    <Sidebar setActivePage={setActivePage} />
+    <Sidebar setActivePage={setActivePage} activePage={activePage} />
 
     <div className="flex-1 p-8">
 <button
@@ -3372,6 +3431,272 @@ return () => {
 
   </div>
 )}
+
+  {activePage === "insights" && (
+  <>
+    {/* ===== E7 AI INSIGHTS PAGE ===== */}
+    <div className="max-w-5xl mx-auto text-left">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+        <div>
+          <p className="text-sm font-semibold text-primary uppercase tracking-wide">E7 • AI Interpretation Layer</p>
+          <h1 className="text-4xl md:text-5xl font-heading font-bold text-textPrimary mt-2">AI Insights</h1>
+          <p className="text-base text-textSecondary mt-2">
+            Personalized explanations and priority actions generated from all 7 analytics engines.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+            techModeEnabled ? "bg-gray-800 text-white" : "bg-orange-100 text-primary"
+          }`}>
+            {techModeEnabled ? "🔬 Technical Mode" : "👤 User Mode"}
+          </span>
+          <button
+            onClick={() => setTechModeEnabled(prev => !prev)}
+            className="bg-white border border-gray-200 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-orange-50 transition shadow-sm"
+          >
+            Switch to {techModeEnabled ? "User" : "Technical"} Mode
+          </button>
+        </div>
+      </div>
+
+      {/* Loading State */}
+      {interpretationLoading && (
+        <div className="bg-white rounded-2xl shadow-card p-8 flex flex-col items-center justify-center gap-4 min-h-[200px]">
+          <div className="w-12 h-12 border-4 border-orange-100 border-t-primary rounded-full animate-spin" />
+          <p className="text-textSecondary text-sm font-medium">Generating your personalized AI insights…</p>
+          <p className="text-xs text-gray-400">Analyzing all 7 analytics engines</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {interpretationError && !interpretationLoading && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-6 text-red-700">
+          <p className="font-semibold">⚠️ {interpretationError}</p>
+          <p className="text-sm mt-1 text-red-500">Your analytics results are still displayed in the Analytics section.</p>
+        </div>
+      )}
+
+      {/* No data yet */}
+      {!interpretationResult && !interpretationLoading && !interpretationError && (
+        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-8 text-center">
+          <p className="text-2xl mb-2">🧠</p>
+          <p className="font-semibold text-textPrimary">Insights will appear after your analytics data loads.</p>
+          <p className="text-sm text-textSecondary mt-1">Navigate to the Dashboard first to trigger your analytics engines.</p>
+        </div>
+      )}
+
+      {interpretationResult && !interpretationLoading && (() => {
+        const um = interpretationResult.user_mode || {};
+        const tm = interpretationResult.technical_mode || {};
+        const source = interpretationResult.source || "analytics_interpretation_engine";
+        const isLLM = source === "llm";
+
+        return (
+          <div className="space-y-6">
+
+            {/* Source badge */}
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                isLLM
+                  ? "bg-purple-100 text-purple-700"
+                  : "bg-orange-100 text-primary"
+              }`}>
+                {isLLM ? "✨ LLM-Powered" : "⚙️ Deterministic Engine"}
+              </span>
+              <span className="text-xs text-gray-400">
+                {isLLM
+                  ? "Insights generated by Gemini/OpenAI using your analytics outputs"
+                  : "Insights generated by FitIQ's built-in interpretation engine"}
+              </span>
+            </div>
+
+            {/* Overall Summary */}
+            {um.overall_summary && (
+              <div className="bg-gradient-to-br from-primary to-orange-700 text-white rounded-2xl p-6 shadow-card">
+                <p className="text-xs font-bold uppercase tracking-widest opacity-70 mb-2">Overall Summary</p>
+                <p className="text-lg leading-relaxed font-medium">{um.overall_summary}</p>
+              </div>
+            )}
+
+            {/* Strengths + Needs Attention */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {um.strengths?.length > 0 && (
+                <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
+                  <h2 className="font-bold text-green-700 text-base mb-3 flex items-center gap-2">
+                    <span>✅</span> Your Strengths
+                  </h2>
+                  <ul className="space-y-2">
+                    {um.strengths.map((s, i) => (
+                      <li key={i} className="text-sm text-gray-700 flex gap-2">
+                        <span className="text-green-500 mt-0.5 shrink-0">●</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {um.what_needs_attention?.length > 0 && (
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
+                  <h2 className="font-bold text-amber-700 text-base mb-3 flex items-center gap-2">
+                    <span>⚠️</span> What Needs Attention
+                  </h2>
+                  <ul className="space-y-2">
+                    {um.what_needs_attention.map((n, i) => (
+                      <li key={i} className="text-sm text-gray-700 flex gap-2">
+                        <span className="text-amber-500 mt-0.5 shrink-0">●</span>
+                        <span>{n}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Priority Actions */}
+            {um.priority_actions?.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-card p-6">
+                <h2 className="text-xl font-bold mb-1">🎯 Top Priority Actions</h2>
+                <p className="text-sm text-textSecondary mb-5">Personalized, engine-backed actions ranked by impact.</p>
+                <div className="space-y-4">
+                  {um.priority_actions.map((action, i) => (
+                    <div key={i} className="flex gap-4 p-4 rounded-xl border border-orange-100 bg-orange-50/40">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white font-bold flex items-center justify-center text-sm">
+                        {action.priority || i + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-textPrimary text-sm">{action.title || action.action}</p>
+                        {action.action && action.title && (
+                          <p className="text-sm text-gray-600 mt-1">{action.action}</p>
+                        )}
+                        {action.why && (
+                          <p className="text-xs text-gray-500 mt-1.5 italic">Why: {action.why}</p>
+                        )}
+                        {action.how_to_start && (
+                          <p className="text-xs text-primary mt-1 font-medium">How to start: {action.how_to_start}</p>
+                        )}
+                        {action.related_engine && (
+                          <span className="inline-block mt-2 text-[10px] font-bold bg-orange-100 text-primary px-2 py-0.5 rounded-full">
+                            {action.related_engine}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Why These Recommendations */}
+            {um.why_these_recommendations && (
+              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5">
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Why These Recommendations?</p>
+                <p className="text-sm text-gray-600 leading-relaxed">{um.why_these_recommendations}</p>
+              </div>
+            )}
+
+            {/* Cross-Engine Insights */}
+            {um.cross_engine_insights?.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-card p-6">
+                <h2 className="text-xl font-bold mb-1">🔗 Cross-Engine Insights</h2>
+                <p className="text-sm text-textSecondary mb-5">How your different analytics engines connect.</p>
+                <div className="space-y-3">
+                  {um.cross_engine_insights.map((insight, i) => (
+                    <div key={i} className="flex gap-3 p-4 rounded-xl bg-blue-50 border border-blue-100">
+                      <span className="text-blue-400 mt-0.5 shrink-0">◆</span>
+                      <p className="text-sm text-gray-700">{insight}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Key Findings — Engine by Engine */}
+            {um.key_findings?.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-card p-6">
+                <h2 className="text-xl font-bold mb-1">📊 Engine-wise Analysis</h2>
+                <p className="text-sm text-textSecondary mb-5">Result → Meaning → Evidence → Recommendation, per engine.</p>
+                <div className="space-y-4">
+                  {um.key_findings.map((finding, i) => (
+                    <details key={i} className="group border border-gray-100 rounded-xl overflow-hidden">
+                      <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-orange-50 transition font-semibold text-sm">
+                        <span>{finding.engine}</span>
+                        <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                      </summary>
+                      <div className="px-4 pb-4 space-y-3 text-sm text-gray-700">
+                        {finding.finding && (
+                          <div className="bg-orange-50 rounded-lg p-3">
+                            <p className="text-xs font-bold text-primary uppercase tracking-wide mb-1">Finding</p>
+                            <p>{finding.finding}</p>
+                          </div>
+                        )}
+                        {finding.evidence && (
+                          <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Evidence</p>
+                            <p className="font-mono text-xs bg-gray-50 rounded p-2">{finding.evidence}</p>
+                          </div>
+                        )}
+                        {finding.explanation && (
+                          <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Explanation</p>
+                            <p>{finding.explanation}</p>
+                          </div>
+                        )}
+                        {finding.recommendation && (
+                          <div className="bg-green-50 rounded-lg p-3">
+                            <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Recommendation</p>
+                            <p>{finding.recommendation}</p>
+                          </div>
+                        )}
+
+                        {/* Technical mode overlay */}
+                        {techModeEnabled && tm[`engine_${i + 1}`] && (
+                          <div className="mt-3 bg-gray-900 text-green-300 rounded-xl p-4 font-mono text-xs space-y-2">
+                            <p className="text-green-400 font-bold">[ Technical / Viva Mode ]</p>
+                            {Object.entries(tm[`engine_${i + 1}`]).map(([k, v]) => (
+                              <div key={k}>
+                                <span className="text-gray-400">{k}: </span>
+                                <span>{String(v)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Full Technical Mode Panel */}
+            {techModeEnabled && Object.keys(tm).length > 0 && (
+              <div className="bg-gray-900 text-green-300 rounded-2xl p-6 font-mono text-xs">
+                <p className="text-green-400 font-bold text-sm mb-4">🔬 Full Technical / Viva Mode — All Engines</p>
+                <div className="space-y-4">
+                  {Object.entries(tm).map(([key, engine]) => (
+                    <div key={key} className="border border-gray-700 rounded-xl p-4">
+                      <p className="text-yellow-300 font-bold mb-2">{engine.name || key}</p>
+                      {Object.entries(engine).filter(([k]) => k !== "name").map(([k, v]) => (
+                        <div key={k} className="mb-1">
+                          <span className="text-gray-400">{k}: </span>
+                          <span>{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        );
+      })()}
+
+    </div>
+  </>
+  )}
 
   {activePage === "tracking" && (
     <DailyTracking />

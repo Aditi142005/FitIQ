@@ -48,7 +48,7 @@ from engines.e5_anomaly_engine import (
     analyze_user_activity
 )
 from engines.nutrition_engine import analyze_nutrition
-from llm_service import generate_behavior_insights
+from llm_service import generate_behavior_insights, generate_comprehensive_interpretation
 app = Flask(__name__)
 CORS(app)
 
@@ -452,6 +452,30 @@ def recommendations():
     return jsonify({
         "recommendations": result
     })
+
+
+@app.route("/comprehensive-interpretation", methods=["POST"])
+def comprehensive_interpretation():
+    """
+    Engine 7 — Holistic LLM Interpretation Layer.
+    Accepts all engine outputs + user profile from the frontend,
+    runs them through the LLM (or deterministic fallback), and
+    returns structured insights, priority actions, and cross-engine analysis.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+
+        result = generate_comprehensive_interpretation(data)
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print("Comprehensive interpretation error:", str(e))
+        return jsonify({
+            "status": "error",
+            "message": "Personalized explanation is temporarily unavailable. Your analytics results are still displayed.",
+            "error": str(e)
+        }), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
