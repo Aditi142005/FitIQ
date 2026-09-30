@@ -1,6 +1,7 @@
 import axios from "axios";
+import BACKEND_URL from "../config/api";
 
-const API_BASE_URL = "http://127.0.0.1:5000";
+const API_BASE_URL = BACKEND_URL;
 
 export const getAnomalyAnalysis = async (trackingRecords) => {
   try {

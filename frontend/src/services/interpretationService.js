@@ -1,4 +1,5 @@
-const BACKEND_URL = "http://127.0.0.1:5000";
+import BACKEND_URL from "../config/api";
+const BACKEND_URL_VAL = BACKEND_URL;
 
 /**
  * Engine 7 — Comprehensive Interpretation Service.
@@ -68,7 +69,7 @@ export async function getComprehensiveInterpretation({
     cache_key: cache_key || null,
   };
 
-  const response = await fetch(`${BACKEND_URL}/comprehensive-interpretation`, {
+  const response = await fetch(`${BACKEND_URL_VAL}/comprehensive-interpretation`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

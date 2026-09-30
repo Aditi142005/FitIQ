@@ -1,0 +1,24 @@
+{
+  "appId": "com.fitiq.app",
+  "appName": "FitIQ",
+  "webDir": "build",
+  "bundledWebRuntime": false,
+  "android": {
+    "backgroundColor": "#FAF7F2",
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#FAF7F2",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  },
+  "server": {
+    "cleartext": true,
+    "androidScheme": "https"
+  }
+}

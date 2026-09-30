@@ -6,6 +6,7 @@ import {
   getUserProfile
 } from "../services/firestoreService";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import BACKEND_URL from "../config/api";
 function ProfileSetup() {
 const navigate = useNavigate();
 const [searchParams] = useSearchParams();
@@ -130,7 +131,7 @@ useEffect(() => {
 
     // New user: calculate body analysis
     const response = await axios.post(
-      "http://127.0.0.1:5000/body-analysis",
+      `${BACKEND_URL}/body-analysis`,
       {
         age: Number(profile.age),
         gender: profile.gender,

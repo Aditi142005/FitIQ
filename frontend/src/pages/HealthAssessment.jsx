@@ -8,6 +8,7 @@ import {
   addHealthHistory
 } from "../services/firestoreService";
 import { useLocation } from "react-router-dom";
+import BACKEND_URL from "../config/api";
 function HealthAssessment() {
 const navigate = useNavigate();
   const [step,setStep] = useState(1);
@@ -404,7 +405,7 @@ if (!profile) {
   return;
 }
 const analysisResponse = await axios.post(
-  "http://127.0.0.1:5000/body-analysis",
+  `${BACKEND_URL}/body-analysis`,
   {
     age: Number(profile.age),
     gender: profile.gender,

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import DailyTracking from "./DailyTracking";
 import Analytics from "./Analytics";
 import { auth } from "../firebase/firebase";
@@ -25,6 +26,8 @@ import { getConsistencyPrediction } from "../services/consistencyPredictionServi
 import { getCohortAnalysis } from "../services/cohortService";
 import { getAnomalyAnalysis } from "../services/anomalyService";
 import { getComprehensiveInterpretation } from "../services/interpretationService";
+import BACKEND_URL from "../config/api";
+import MobileBottomNav from "../components/MobileBottomNav";
 
 const getTodayDate = getLocalDateKey;
 const getDateKey = (date) => {
@@ -178,7 +181,7 @@ const loadNutritionData = async () => {
     const todayCheckin = checkInStatus.isTracked ? checkInStatus.latestRecord : null;
 
     const response = await fetch(
-      "http://127.0.0.1:5000/nutrition",
+      `${BACKEND_URL}/nutrition`,
       {
         method: "POST",
         headers: {
@@ -228,14 +231,13 @@ const loadNutritionData = async () => {
   const [activePage, setActivePage] = useState("dashboard");
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [authUser, setAuthUser] = useState(null);
 
 const healthScore = profile?.bodyAnalysis?.healthScore || 0;
 
   useEffect(() => {
 
-  async function fetchProfile() {
-
-    const user = auth.currentUser;
+  async function fetchProfile(user) {
 
     if (!user) {
       setProfileLoading(false);
@@ -274,7 +276,7 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
         console.log("24-hour check-in period expired! Automatically transitioning to 'Take Check-in'");
         setDailyTrackingRecorded(false);
         window.dispatchEvent(new Event("dailyTrackingExpired"));
-        fetchProfile();
+        fetchProfile(auth.currentUser);
       }, checkInStatus.remainingMs + 500);
     }
 
@@ -328,7 +330,7 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
       console.log("E6 NUTRITION INPUT:", nutritionInput);
 
       const nutritionResponse = await fetch(
-        "http://127.0.0.1:5000/nutrition",
+        `${BACKEND_URL}/nutrition`,
         {
           method: "POST",
           headers: {
@@ -674,16 +676,23 @@ setBestStreak(streakData.bestStreak);
   }
   }
 
-  fetchProfile();
+  const unsubscribeAuth = onAuthStateChanged(auth, async (resolvedUser) => {
+    setAuthUser(resolvedUser);
+    if (resolvedUser) {
+      await fetchProfile(resolvedUser);
+    } else {
+      setProfileLoading(false);
+    }
+  });
 const handleTrackingUpdate = () => {
-  fetchProfile();
+  fetchProfile(auth.currentUser);
 };
 
 const handleProfileUpdate = (e) => {
   if (e?.detail) {
     setProfile((prev) => ({ ...prev, ...e.detail }));
   } else {
-    fetchProfile();
+    fetchProfile(auth.currentUser);
   }
 };
 
@@ -703,6 +712,7 @@ window.addEventListener(
 );
 
 return () => {
+  unsubscribeAuth();
   window.removeEventListener(
     "dailyTrackingUpdated",
     handleTrackingUpdate
@@ -737,7 +747,7 @@ useEffect(() => {
   };
 
   // Determine personalized greeting from authenticated profile
-  const userDisplayName = getUserDisplayName(profile, auth.currentUser);
+  const userDisplayName = getUserDisplayName(profile, authUser);
   const hasCompletedAssessment = Boolean(
     profile?.healthAssessmentCompleted === true ||
     (profile?.healthAssessment && typeof profile.healthAssessment === "object" && Object.keys(profile.healthAssessment).length > 0) ||
@@ -758,9 +768,13 @@ useEffect(() => {
   return (
   <div className="min-h-screen bg-background flex">
 
-    <Sidebar setActivePage={setActivePage} activePage={activePage} profile={profile} />
+    {/* Desktop sidebar — hidden on mobile via .desktop-sidebar CSS class */}
+    <div className="desktop-sidebar">
+      <Sidebar setActivePage={setActivePage} activePage={activePage} profile={profile} user={authUser} />
+    </div>
 
-    <div className="flex-1 p-8">
+    {/* Main content — mobile-content-wrapper adds bottom padding for nav bar */}
+    <div className="flex-1 p-8 md:p-8 p-4 mobile-content-wrapper overflow-x-hidden">
 {activePage !== "profile" && (
   <button
     onClick={handleLogout}
@@ -1344,7 +1358,7 @@ useEffect(() => {
   {activePage === "profile" && (
     <ProfileSection
       profile={profile}
-      user={auth.currentUser}
+      user={authUser || auth.currentUser}
       onProfileUpdated={(updatedData) => {
         setProfile((prev) => ({
           ...prev,
@@ -2307,6 +2321,9 @@ useEffect(() => {
 </div>
 
   </div>
+
+    {/* Mobile bottom navigation — visible only on screens ≤768px */}
+    <MobileBottomNav activePage={activePage} setActivePage={setActivePage} />
 
 </div>
 
