@@ -1,5 +1,7 @@
 .env
 backend/.env
+backend/.env.*
+!backend/.env.example
 venv/
 ml/venv/
 __pycache__/
