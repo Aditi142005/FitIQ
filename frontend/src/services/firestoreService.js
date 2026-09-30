@@ -68,8 +68,141 @@ export const updateUserProfile = async (uid, profileData) => {
 
 
 /* =========================================================
-   DAILY TRACKING
+   DAILY TRACKING (STRICT 24-HOUR CYCLE)
    ========================================================= */
+
+export const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000; // 86,400,000 ms
+
+/**
+ * Safely extracts milliseconds from a Firestore Timestamp, number, string, or Date.
+ */
+export const getTimestampMillis = (ts) => {
+  if (!ts) return null;
+  if (typeof ts === "number") return ts;
+  if (typeof ts.toMillis === "function") return ts.toMillis();
+  if (typeof ts.toDate === "function") return ts.toDate().getTime();
+  if (ts.seconds !== undefined) {
+    return ts.seconds * 1000 + (ts.nanoseconds ? Math.round(ts.nanoseconds / 1000000) : 0);
+  }
+  if (typeof ts === "string") {
+    const parsed = Date.parse(ts);
+    return isNaN(parsed) ? null : parsed;
+  }
+  if (ts instanceof Date) return ts.getTime();
+  return null;
+};
+
+/**
+ * Validates whether a Firestore dailyTracking document represents an actual
+ * Daily Check-in submitted by the user (as opposed to goal checkboxes or assessments).
+ */
+export const isCheckInRecord = (record) => {
+  if (!record || typeof record !== "object") return false;
+  // If explicitly flagged as check-in completed
+  if (record.checkInCompleted === true || record.dailyCheckInCompleted === true) return true;
+  // If it has recordedAt or completedAt timestamp (only saved by saveDailyTracking)
+  if (record.completedAt || record.recordedAt || record.completedAtMillis) return true;
+  // If it has actual check-in metrics (must have steps plus at least one other metric)
+  const hasSteps = record.steps !== undefined && record.steps !== null && record.steps !== "";
+  const hasSleep = record.sleepHours !== undefined && record.sleepHours !== null && record.sleepHours !== "";
+  const hasWater = record.waterIntake !== undefined && record.waterIntake !== null && record.waterIntake !== "";
+  const hasCalories = record.caloriesConsumed !== undefined && record.caloriesConsumed !== null && record.caloriesConsumed !== "";
+
+  return Boolean(hasSteps && (hasSleep || hasWater || hasCalories));
+};
+
+/**
+ * Evaluates the user's latest completed Daily Check-in strictly on a 24-hour cycle.
+ * Source of truth: The actual Daily Check-in completion timestamp in Firestore.
+ */
+export const getLatestCheckInStatus = async (uid) => {
+  if (!uid) {
+    return {
+      isTracked: false,
+      canCheckIn: true,
+      remainingMs: 0,
+      elapsedTime: 0,
+      completedAt: null,
+      completedAtMillis: null,
+      latestRecord: null,
+      nextAvailableAt: null
+    };
+  }
+
+  const allRecords = await getWeeklyTracking(uid);
+
+  // Filter only valid Daily Check-in records (Initial Assessment documents do NOT count)
+  const checkInRecords = (allRecords || []).filter((r) => isCheckInRecord(r));
+
+  if (checkInRecords.length === 0) {
+    return {
+      isTracked: false,
+      canCheckIn: true,
+      remainingMs: 0,
+      elapsedTime: 0,
+      completedAt: null,
+      completedAtMillis: null,
+      latestRecord: null,
+      nextAvailableAt: null
+    };
+  }
+
+  let latestRecord = null;
+  let latestMillis = 0;
+
+  for (const record of checkInRecords) {
+    const rawTs =
+      record.completedAt ||
+      record.recordedAt ||
+      record.completedAtMillis ||
+      record.createdAt ||
+      record.timestamp;
+
+    let millis = getTimestampMillis(rawTs);
+
+    // Fallback: if legacy record only has date string "YYYY-MM-DD"
+    if (!millis && record.date) {
+      const parsed = new Date(`${record.date}T00:00:00`);
+      if (!isNaN(parsed.getTime())) {
+        millis = parsed.getTime();
+      }
+    }
+
+    if (millis && millis > latestMillis) {
+      latestMillis = millis;
+      latestRecord = record;
+    }
+  }
+
+  if (!latestRecord || !latestMillis) {
+    return {
+      isTracked: false,
+      canCheckIn: true,
+      remainingMs: 0,
+      elapsedTime: 0,
+      completedAt: null,
+      completedAtMillis: null,
+      latestRecord: null,
+      nextAvailableAt: null
+    };
+  }
+
+  const now = Date.now();
+  const elapsedTime = now - latestMillis;
+  const isWithin24Hours = elapsedTime >= 0 && elapsedTime < TWENTY_FOUR_HOURS_MS;
+  const remainingMs = isWithin24Hours ? TWENTY_FOUR_HOURS_MS - elapsedTime : 0;
+
+  return {
+    isTracked: isWithin24Hours,
+    canCheckIn: !isWithin24Hours,
+    remainingMs,
+    elapsedTime,
+    completedAt: new Date(latestMillis),
+    completedAtMillis: latestMillis,
+    latestRecord,
+    nextAvailableAt: new Date(latestMillis + TWENTY_FOUR_HOURS_MS)
+  };
+};
 
 export const saveDailyTracking = async (uid, trackingData) => {
   const date = getLocalDateKey();
@@ -82,46 +215,53 @@ export const saveDailyTracking = async (uid, trackingData) => {
     date
   );
 
-  await setDoc(
-    trackingRef,
-    {
-      ...trackingData,
-      date,
-      recordedAt: serverTimestamp(),
-    },
-    {
-      merge: true,
-    }
-  );
+  const completedAt = serverTimestamp();
+  const completedAtMillis = Date.now();
+
+  const payload = {
+    ...trackingData,
+    date,
+    checkInCompleted: true,
+    dailyCheckInCompleted: true,
+    completedAt,
+    completedAtMillis,
+    recordedAt: completedAt,
+  };
+
+  await setDoc(trackingRef, payload, { merge: true });
+
+  // Persist latest completion timestamp on user document for fast retrieval
+  try {
+    const userRef = doc(db, "users", uid);
+    await setDoc(
+      userRef,
+      {
+        lastCheckInCompletedAt: completedAt,
+        lastCheckInCompletedAtMillis: completedAtMillis,
+        lastCheckInRecordDate: date
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn("Could not update lastCheckInCompletedAt on profile doc:", err);
+  }
 
   return {
     success: true,
     date,
+    completedAtMillis
   };
 };
 
-
 /* =========================================================
-   GET TODAY'S TRACKING
+   GET ACTIVE CHECK-IN FOR CURRENT 24-HOUR CYCLE
    ========================================================= */
 
 export const getDailyTracking = async (uid) => {
-  const date = getLocalDateKey();
-
-  const trackingRef = doc(
-    db,
-    "users",
-    uid,
-    "dailyTracking",
-    date
-  );
-
-  const snapshot = await getDoc(trackingRef);
-
-  if (snapshot.exists()) {
-    return snapshot.data();
+  const status = await getLatestCheckInStatus(uid);
+  if (status.isTracked && status.latestRecord) {
+    return status.latestRecord;
   }
-
   return null;
 };
 

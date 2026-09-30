@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { auth } from "../firebase/firebase";
 import {
   saveDailyTracking,
-  getDailyTracking
+  getLatestCheckInStatus
 } from "../services/firestoreService";
 
 const EMPTY_TRACKING = {
@@ -18,53 +18,105 @@ const EMPTY_TRACKING = {
   workoutCompleted: false
 };
 
+function formatRemainingTime(ms) {
+  if (!ms || ms <= 0) return "available now";
+  const totalMinutes = Math.floor(ms / (60 * 1000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) {
+    return `${hours} hr${hours === 1 ? "" : "s"} ${minutes} min${minutes === 1 ? "" : "s"}`;
+  }
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
 function DailyTracking() {
   const [trackingData, setTrackingData] = useState(EMPTY_TRACKING);
   const [isRecorded, setIsRecorded] = useState(false);
+  const [countdownText, setCountdownText] = useState("");
+  const [nextAvailableDate, setNextAvailableDate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const expirationTimerRef = useRef(null);
+
+  const checkStatus = async () => {
+    try {
+      const user = auth.currentUser;
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Check strictly against the 24-hour cycle from Firestore completion timestamp
+      const status = await getLatestCheckInStatus(user.uid);
+
+      if (status.isTracked && status.latestRecord) {
+        setIsRecorded(true);
+        setNextAvailableDate(status.nextAvailableAt);
+        setCountdownText(formatRemainingTime(status.remainingMs));
+
+        setTrackingData({
+          steps: status.latestRecord.steps ?? "",
+          waterIntake: status.latestRecord.waterIntake ?? "",
+          sleepHours: status.latestRecord.sleepHours ?? "",
+          sleepQuality: status.latestRecord.sleepQuality ?? "",
+          exerciseMinutes: status.latestRecord.exerciseMinutes ?? "",
+          exerciseIntensity: status.latestRecord.exerciseIntensity ?? "",
+          caloriesConsumed: status.latestRecord.caloriesConsumed ?? "",
+          stressLevel: status.latestRecord.stressLevel ?? "",
+          energyLevel: status.latestRecord.energyLevel ?? "",
+          workoutCompleted: Boolean(status.latestRecord.workoutCompleted)
+        });
+
+        // Set automatic expiration timer for the exact remaining duration
+        if (expirationTimerRef.current) {
+          clearTimeout(expirationTimerRef.current);
+        }
+
+        if (status.remainingMs > 0) {
+          expirationTimerRef.current = setTimeout(() => {
+            console.log("24-hour check-in period expired! Unlocking new check-in.");
+            setIsRecorded(false);
+            setCountdownText("");
+            setNextAvailableDate(null);
+            setTrackingData(EMPTY_TRACKING);
+          }, status.remainingMs + 500);
+        }
+      } else {
+        setIsRecorded(false);
+        setCountdownText("");
+        setNextAvailableDate(null);
+        setTrackingData(EMPTY_TRACKING);
+      }
+    } catch (error) {
+      console.error("Unable to load 24-hour check-in status:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadTodayData() {
-      try {
-        const user = auth.currentUser;
+    checkStatus();
 
-        if (!user) {
-          setLoading(false);
-          return;
-        }
+    const handleUpdate = () => {
+      checkStatus();
+    };
 
-        const data = await getDailyTracking(user.uid);
+    window.addEventListener("dailyTrackingUpdated", handleUpdate);
+    window.addEventListener("dailyTrackingExpired", handleUpdate);
 
-        if (data) {
-          setTrackingData({
-            steps: data.steps ?? "",
-            waterIntake: data.waterIntake ?? "",
-            sleepHours: data.sleepHours ?? "",
-            sleepQuality: data.sleepQuality ?? "",
-            exerciseMinutes: data.exerciseMinutes ?? "",
-            exerciseIntensity: data.exerciseIntensity ?? "",
-            caloriesConsumed: data.caloriesConsumed ?? "",
-            stressLevel: data.stressLevel ?? "",
-            energyLevel: data.energyLevel ?? "",
-            workoutCompleted: Boolean(data.workoutCompleted)
-          });
-          setIsRecorded(true);
-        } else {
-          setTrackingData(EMPTY_TRACKING);
-          setIsRecorded(false);
-        }
-      } catch (error) {
-        console.error("Unable to load today's tracking:", error);
-      } finally {
-        setLoading(false);
+    return () => {
+      window.removeEventListener("dailyTrackingUpdated", handleUpdate);
+      window.removeEventListener("dailyTrackingExpired", handleUpdate);
+      if (expirationTimerRef.current) {
+        clearTimeout(expirationTimerRef.current);
       }
-    }
-
-    loadTodayData();
+    };
   }, []);
 
   const handleChange = (event) => {
+    if (isRecorded) return; // Locked during active 24-hour cycle
+
     const { name, value, type, checked } = event.target;
 
     setTrackingData((current) => ({
@@ -78,6 +130,14 @@ function DailyTracking() {
 
     if (!user) {
       alert("No user logged in.");
+      return;
+    }
+
+    // Verify 24-hour cycle before saving
+    if (isRecorded) {
+      alert(
+        `Your check-in is active for the current 24-hour cycle. The next check-in unlocks in ${countdownText || "a few hours"}.`
+      );
       return;
     }
 
@@ -175,6 +235,7 @@ function DailyTracking() {
     try {
       setSaving(true);
 
+      // Save to Firestore with explicit completedAt serverTimestamp
       await saveDailyTracking(user.uid, {
         steps,
         waterIntake,
@@ -189,10 +250,23 @@ function DailyTracking() {
       });
 
       setIsRecorded(true);
+      setCountdownText("24 hrs 0 mins");
+      const nextTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      setNextAvailableDate(nextTime);
+
+      // Start automatic expiration timer for the new 24-hour cycle
+      if (expirationTimerRef.current) clearTimeout(expirationTimerRef.current);
+      expirationTimerRef.current = setTimeout(() => {
+        setIsRecorded(false);
+        setCountdownText("");
+        setNextAvailableDate(null);
+        setTrackingData(EMPTY_TRACKING);
+      }, 24 * 60 * 60 * 1000 + 500);
+
       window.dispatchEvent(new Event("dailyTrackingUpdated"));
-      alert("Today's tracking data saved 🎉");
+      alert("Today's tracking data saved 🎉 Next check-in unlocks in 24 hours.");
     } catch (error) {
-      console.error("Unable to save today's tracking:", error);
+      console.error("Unable to save daily tracking:", error);
       alert(error.message || "Unable to save today's tracking data.");
     } finally {
       setSaving(false);
@@ -200,26 +274,48 @@ function DailyTracking() {
   };
 
   if (loading) {
-    return <p>Loading...</p>;
+    return <p className="p-8 text-center text-gray-500">Checking your 24-hour check-in cycle...</p>;
   }
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8">📅 Daily Tracking</h1>
+      <h1 className="text-4xl font-bold mb-6">📅 Daily Tracking</h1>
 
-      <div className="mb-6 text-center">
+      {/* 24-Hour Cycle Status Banner */}
+      <div className="mb-6 max-w-xl mx-auto">
         {isRecorded ? (
-          <p className="text-green-600 font-semibold">
-            🟢 Today's tracking recorded
-          </p>
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center shadow-xs">
+            <p className="text-emerald-800 font-bold text-lg mb-1 flex items-center justify-center gap-1.5">
+              <span>✓</span> Daily Check-in Tracked
+            </p>
+            <p className="text-emerald-700 text-sm">
+              Your check-in is active for the current 24-hour cycle.
+            </p>
+            {countdownText && (
+              <p className="text-xs text-emerald-600 mt-1 font-medium">
+                Next check-in unlocks in: <strong>{countdownText}</strong>
+                {nextAvailableDate && (
+                  <span> ({nextAvailableDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>
+                )}
+              </p>
+            )}
+          </div>
         ) : (
-          <p className="text-orange-600 font-semibold">
-            ⚪ Today's tracking not recorded
-          </p>
+          <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200 text-center shadow-xs">
+            <p className="text-orange-800 font-bold text-lg mb-1">
+              Take Check-in
+            </p>
+            <p className="text-orange-700 text-sm">
+              Ready for your check-in! Enter your daily metrics below to begin your next 24-hour cycle.
+            </p>
+          </div>
         )}
       </div>
 
-      <div className="bg-white p-6 rounded-2xl shadow-card max-w-xl mx-auto">
+      <div className={`bg-white p-6 rounded-2xl shadow-card max-w-xl mx-auto transition-opacity ${
+        isRecorded ? "opacity-80" : "opacity-100"
+      }`}>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Daily Steps</label>
         <input
           type="number"
           min="0"
@@ -228,9 +324,11 @@ function DailyTracking() {
           placeholder="Daily steps"
           value={trackingData.steps}
           onChange={handleChange}
-          className="w-full border p-3 rounded mb-3"
+          disabled={isRecorded}
+          className="w-full border p-3 rounded-xl mb-3 disabled:bg-gray-50 disabled:text-gray-700"
         />
 
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Water Intake (Liters)</label>
         <input
           type="number"
           min="0"
@@ -240,9 +338,11 @@ function DailyTracking() {
           placeholder="Water intake (litres)"
           value={trackingData.waterIntake}
           onChange={handleChange}
-          className="w-full border p-3 rounded mb-3"
+          disabled={isRecorded}
+          className="w-full border p-3 rounded-xl mb-3 disabled:bg-gray-50 disabled:text-gray-700"
         />
 
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Sleep Hours</label>
         <input
           type="number"
           min="0"
@@ -252,10 +352,11 @@ function DailyTracking() {
           placeholder="Sleep hours"
           value={trackingData.sleepHours}
           onChange={handleChange}
-          className="w-full border p-3 rounded mb-3"
+          disabled={isRecorded}
+          className="w-full border p-3 rounded-xl mb-3 disabled:bg-gray-50 disabled:text-gray-700"
         />
 
-        <label className="block mb-2">Sleep Quality (1-5)</label>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Sleep Quality (1-5)</label>
         <input
           type="number"
           min="1"
@@ -264,9 +365,11 @@ function DailyTracking() {
           placeholder="Sleep quality (1-5)"
           value={trackingData.sleepQuality}
           onChange={handleChange}
-          className="w-full border p-3 rounded mb-3"
+          disabled={isRecorded}
+          className="w-full border p-3 rounded-xl mb-3 disabled:bg-gray-50 disabled:text-gray-700"
         />
 
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Exercise Duration (Minutes)</label>
         <input
           type="number"
           min="0"
@@ -275,14 +378,17 @@ function DailyTracking() {
           placeholder="Exercise duration (minutes)"
           value={trackingData.exerciseMinutes}
           onChange={handleChange}
-          className="w-full border p-3 rounded mb-3"
+          disabled={isRecorded}
+          className="w-full border p-3 rounded-xl mb-3 disabled:bg-gray-50 disabled:text-gray-700"
         />
 
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Exercise Intensity</label>
         <select
           name="exerciseIntensity"
           value={trackingData.exerciseIntensity}
           onChange={handleChange}
-          className="w-full border p-3 rounded mb-3"
+          disabled={isRecorded}
+          className="w-full border p-3 rounded-xl mb-3 disabled:bg-gray-50 disabled:text-gray-700"
         >
           <option value="">Select exercise intensity</option>
           <option value="Low">Low</option>
@@ -290,6 +396,7 @@ function DailyTracking() {
           <option value="High">High</option>
         </select>
 
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Calories Consumed</label>
         <input
           type="number"
           min="0"
@@ -298,10 +405,11 @@ function DailyTracking() {
           placeholder="Calories consumed"
           value={trackingData.caloriesConsumed}
           onChange={handleChange}
-          className="w-full border p-3 rounded mb-3"
+          disabled={isRecorded}
+          className="w-full border p-3 rounded-xl mb-3 disabled:bg-gray-50 disabled:text-gray-700"
         />
 
-        <label className="block mb-2">Stress Level (1-5)</label>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Stress Level (1-5)</label>
         <input
           type="number"
           min="1"
@@ -309,10 +417,11 @@ function DailyTracking() {
           name="stressLevel"
           value={trackingData.stressLevel}
           onChange={handleChange}
-          className="w-full border p-3 rounded mb-3"
+          disabled={isRecorded}
+          className="w-full border p-3 rounded-xl mb-3 disabled:bg-gray-50 disabled:text-gray-700"
         />
 
-        <label className="block mb-2">Energy Level (1-5)</label>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Energy Level (1-5)</label>
         <input
           type="number"
           min="1"
@@ -320,7 +429,8 @@ function DailyTracking() {
           name="energyLevel"
           value={trackingData.energyLevel}
           onChange={handleChange}
-          className="w-full border p-3 rounded mb-4"
+          disabled={isRecorded}
+          className="w-full border p-3 rounded-xl mb-4 disabled:bg-gray-50 disabled:text-gray-700"
         />
 
         <label className="flex items-center gap-3 mb-6">
@@ -329,16 +439,25 @@ function DailyTracking() {
             name="workoutCompleted"
             checked={trackingData.workoutCompleted}
             onChange={handleChange}
+            disabled={isRecorded}
           />
-          <span>Workout completed today</span>
+          <span className="text-sm font-medium text-gray-700">Workout completed today</span>
         </label>
 
         <button
           onClick={handleSave}
-          disabled={saving}
-          className="bg-primary text-white px-6 py-3 rounded-xl disabled:opacity-60"
+          disabled={saving || isRecorded}
+          className={`w-full py-3.5 rounded-xl font-semibold transition shadow-sm ${
+            isRecorded
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300"
+              : "bg-primary text-white hover:bg-orange-700"
+          }`}
         >
-          {saving ? "Saving..." : "Save Today's Data"}
+          {saving
+            ? "Saving..."
+            : isRecorded
+            ? `Next Check-in Available in ${countdownText || "24 hrs"}`
+            : "Save Check-in Data"}
         </button>
       </div>
     </div>

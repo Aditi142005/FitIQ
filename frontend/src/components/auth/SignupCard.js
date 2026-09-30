@@ -63,6 +63,7 @@ function SignupCard() {
 
       // 2. Save user profile to Firestore (never storing passwords)
       await createUserProfile(userCredential.user.uid, {
+        fullName: name.trim(),
         name: name.trim(),
         email: email.trim()
       });

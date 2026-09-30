@@ -29,7 +29,16 @@ export async function getComprehensiveInterpretation({
   cohortResult,
   anomalyResult,
   nutritionData,
+  today_checkin,
+  latest_checkin,
+  previous_checkin,
+  changes,
+  checkin_count,
+  is_first_checkin,
+  recent_history,
+  cache_key,
 }) {
+  const activeLatest = latest_checkin || today_checkin || null;
   const payload = {
     profile: profile || {},
     engines: {
@@ -41,7 +50,7 @@ export async function getComprehensiveInterpretation({
       engine5_anomaly: anomalyResult || {},
       engine6_nutrition: nutritionData || {},
     },
-    // Also pass flat fields for backward compatibility with deterministic engine
+    // Flat fields for backward compatibility with deterministic engine
     fisResult: fisResult || {},
     behaviorResult: behaviorResult || {},
     predictionResult: predictionResult || {},
@@ -49,6 +58,14 @@ export async function getComprehensiveInterpretation({
     cohortResult: cohortResult || {},
     anomalyResult: anomalyResult || {},
     nutritionData: nutritionData || {},
+    today_checkin: activeLatest,
+    latest_checkin: activeLatest,
+    previous_checkin: previous_checkin || null,
+    changes: changes || null,
+    checkin_count: checkin_count || (recent_history?.length ?? (activeLatest ? 1 : 0)),
+    is_first_checkin: is_first_checkin ?? ((checkin_count || (recent_history?.length ?? 0)) <= 1),
+    recent_history: recent_history || [],
+    cache_key: cache_key || null,
   };
 
   const response = await fetch(`${BACKEND_URL}/comprehensive-interpretation`, {

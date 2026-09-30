@@ -11,6 +11,7 @@ const navigate = useNavigate();
 const [searchParams] = useSearchParams();
 const isEditMode = searchParams.get("edit") === "true";
   const [profile, setProfile] = useState({
+    name: "",
     age: "",
     gender: "",
     height: "",
@@ -32,6 +33,7 @@ useEffect(() => {
     if (data) {
 
       setProfile({
+        name: data.fullName || data.name || data.displayName || user.displayName || "",
         age: data.age ?? "",
         gender: data.gender ?? "",
         height: data.height ?? "",
@@ -94,21 +96,37 @@ useEffect(() => {
       return;
     }
 
+    const trimmedName = profile.name ? profile.name.trim() : "";
+
     // Save profile data
-    await updateUserProfile(user.uid, {
+    const profilePayload = {
       ...profile,
+      ...(trimmedName ? { name: trimmedName, fullName: trimmedName } : {}),
       age: Number(profile.age),
       height: Number(profile.height),
       weight: Number(profile.weight),
-    });
+    };
+
+    await updateUserProfile(user.uid, profilePayload);
+
+    // Sync Firebase Auth displayName if available
+    if (trimmedName && user) {
+      try {
+        const { updateProfile } = await import("firebase/auth");
+        await updateProfile(user, { displayName: trimmedName });
+      } catch (authErr) {
+        console.warn("Could not sync displayName:", authErr);
+      }
+    }
 
     // Edit Profile from Dashboard
     // Only update profile and return to Dashboard.
     if (isEditMode) {
-  alert("Profile updated successfully! 🎉");
-  navigate("/dashboard");
-  return;
-}
+      window.dispatchEvent(new CustomEvent("profileUpdated", { detail: profilePayload }));
+      alert("Profile updated successfully! 🎉");
+      navigate("/dashboard");
+      return;
+    }
 
     // New user: calculate body analysis
     const response = await axios.post(
@@ -150,6 +168,18 @@ useEffect(() => {
           onSubmit={handleSubmit}
           className="space-y-4"
         >
+<label className="block mb-1 font-medium">
+  Full Name
+</label>
+<input
+  type="text"
+  name="name"
+  placeholder="Your Full Name"
+  value={profile.name}
+  onChange={handleChange}
+  className="w-full border p-3 rounded"
+/>
+
 <label className="block mb-1 font-medium">
  Age
 </label>
