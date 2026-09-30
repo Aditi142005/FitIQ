@@ -2,7 +2,7 @@ services:
   - type: web
     name: fitiq-api
     runtime: python
-    plan: standard
+    plan: free
     region: singapore
     buildCommand: pip install -r backend/requirements.txt
     startCommand: gunicorn --chdir backend --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120 app:app
