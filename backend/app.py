@@ -48,7 +48,8 @@ from engines.e5_anomaly_engine import (
     analyze_user_activity
 )
 from engines.nutrition_engine import analyze_nutrition
-from llm_service import generate_behavior_insights, generate_comprehensive_interpretation
+from engines.meal_recommendation_engine import recommend_daily_meal_plan
+from llm_service import generate_behavior_insights, generate_comprehensive_interpretation, generate_nutrition_meal_plan
 app = Flask(__name__)
 CORS(app)
 
@@ -429,7 +430,25 @@ def nutrition_analysis():
     try:
         data = request.get_json(silent=True) or {}
 
+        # 1. Existing USDA nutrition engine calculations (BMR, TDEE, Calorie target, Macros, USDA scored foods)
         result = analyze_nutrition(data)
+
+        if result.get("status") == "success":
+            # 2. Curated Indian meal plan using meal recommendation engine
+            plan_result = recommend_daily_meal_plan(
+                data,
+                result.get("targets", {}),
+                data.get("recent_history"),
+                data.get("today_checkin")
+            )
+
+            # 3. Enrich meal plan descriptions with LLM / smart coaching notes
+            meal_plan = generate_nutrition_meal_plan(data, result, plan_result.get("meal_plan"))
+
+            result["meal_plan"] = meal_plan
+            result["planned_totals"] = plan_result.get("planned_totals", {})
+            result["summary"] = plan_result.get("summary", {})
+            result["hydration"] = plan_result.get("hydration", {})
 
         return jsonify(result), 200
 
