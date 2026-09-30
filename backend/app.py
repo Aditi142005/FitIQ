@@ -51,12 +51,25 @@ from engines.nutrition_engine import analyze_nutrition
 from engines.meal_recommendation_engine import recommend_daily_meal_plan
 from llm_service import generate_behavior_insights, generate_comprehensive_interpretation, generate_nutrition_meal_plan
 app = Flask(__name__)
-CORS(app)
+cors_origins = [
+    origin.strip()
+    for origin in os.environ.get(
+        "FITIQ_CORS_ORIGINS",
+        "https://localhost,http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if origin.strip()
+]
+CORS(app, origins=cors_origins)
 
 
 @app.route("/")
 def home():
     return "FitIQ Backend Running 🚀"
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok", "service": "fitiq-backend"}), 200
 
 
 @app.route("/body-analysis", methods=["POST"])
@@ -497,4 +510,8 @@ def comprehensive_interpretation():
         }), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(
+        host=os.environ.get("FITIQ_BACKEND_HOST", "0.0.0.0"),
+        port=int(os.environ.get("PORT", os.environ.get("FITIQ_BACKEND_PORT", "5000"))),
+        debug=False,
+    )
