@@ -5,9 +5,7 @@
   "bundledWebRuntime": false,
   "android": {
     "backgroundColor": "#FAF7F2",
-    "allowMixedContent": true,
-    "captureInput": true,
-    "webContentsDebuggingEnabled": true
+    "captureInput": true
   },
   "plugins": {
     "SplashScreen": {
@@ -18,7 +16,6 @@
     }
   },
   "server": {
-    "cleartext": true,
     "androidScheme": "https"
   }
 }

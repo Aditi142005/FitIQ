@@ -24,6 +24,9 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "cap open android",
+    "android:build": "npm run build && node scripts/validate-backend-url.js && cap sync android && cd android && gradlew.bat assembleDebug",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
