@@ -269,7 +269,11 @@ def behavior_analysis():
 
     tracking_records = data.get("trackingRecords", [])
 
-    foundation_df = load_foundation_data()
+    foundation_df = (
+        None
+        if tracking_records is not None and len(tracking_records) >= 7
+        else load_foundation_data()
+    )
 
     result = analyze_behavior(
         tracking_records,

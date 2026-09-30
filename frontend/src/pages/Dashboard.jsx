@@ -26,7 +26,7 @@ import { getConsistencyPrediction } from "../services/consistencyPredictionServi
 import { getCohortAnalysis } from "../services/cohortService";
 import { getAnomalyAnalysis } from "../services/anomalyService";
 import { getComprehensiveInterpretation } from "../services/interpretationService";
-import BACKEND_URL from "../config/api";
+import { fetchBackend } from "../services/apiClient";
 import MobileBottomNav from "../components/MobileBottomNav";
 
 const getTodayDate = getLocalDateKey;
@@ -118,6 +118,8 @@ const [last7DaysTracking, setLast7DaysTracking] = useState([]);
 });
 const [fisResult, setFisResult] = useState(null);
 const [behaviorResult, setBehaviorResult] = useState(null);
+const [behaviorError, setBehaviorError] = useState(null);
+const [analyticsError, setAnalyticsError] = useState(null);
 const [predictionResult, setPredictionResult] = useState(null);
 const [predictionLoading, setPredictionLoading] = useState(false);
 const [predictionError, setPredictionError] = useState(null);
@@ -180,8 +182,8 @@ const loadNutritionData = async () => {
     const checkInStatus = await getLatestCheckInStatus(user.uid);
     const todayCheckin = checkInStatus.isTracked ? checkInStatus.latestRecord : null;
 
-    const response = await fetch(
-      `${BACKEND_URL}/nutrition`,
+    const response = await fetchBackend(
+      "/nutrition",
       {
         method: "POST",
         headers: {
@@ -246,16 +248,17 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
 
     try {
       setProfileLoading(true);
+      setAnalyticsError(null);
+      setBehaviorError(null);
       const data = await getUserProfile(user.uid);
       console.log("PROFILE DATA FROM FIRESTORE:", data);
+      setProfile(data);
+      setProfileLoading(false);
       if (!data) {
-        setProfileLoading(false);
         return;
       }
 
       console.log(data);
-
-      setProfile(data);
 
     const checkInStatus = await getLatestCheckInStatus(user.uid);
     const trackingRecords = await getWeeklyTracking(user.uid);
@@ -329,8 +332,8 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
 
       console.log("E6 NUTRITION INPUT:", nutritionInput);
 
-      const nutritionResponse = await fetch(
-        `${BACKEND_URL}/nutrition`,
+      const nutritionResponse = await fetchBackend(
+        "/nutrition",
         {
           method: "POST",
           headers: {
@@ -376,11 +379,19 @@ const healthScore = profile?.bodyAnalysis?.healthScore || 0;
 
     }
 
-    const behaviorData = await analyzeBehavior(trackingRecords);
-
-    console.log("BEHAVIOR RESULT:", behaviorData);
-
-    setBehaviorResult(behaviorData);
+    let behaviorData = null;
+    try {
+      behaviorData = await analyzeBehavior(trackingRecords);
+      console.log("BEHAVIOR RESULT:", behaviorData);
+      setBehaviorResult(behaviorData);
+      setBehaviorError(null);
+    } catch (error) {
+      console.error("Behavior analytics failed:", error);
+      setBehaviorResult(null);
+      setBehaviorError(
+        error.message || "Behavior analytics are temporarily unavailable."
+      );
+    }
 // Local refs to capture engine results for E7 interpretation
 // (React setState is async and won't reflect in the same execution frame)
 let _predictionData = null;
@@ -671,6 +682,11 @@ setBestStreak(streakData.bestStreak);
     setBestStreak(streakData.bestStreak);
   } catch (profileErr) {
     console.error("fetchProfile error:", profileErr);
+    setAnalyticsError(
+      profileErr.message ||
+        "Unable to load dashboard analytics. Please try again."
+    );
+    setInterpretationLoading(false);
   } finally {
     setProfileLoading(false);
   }
@@ -1338,6 +1354,15 @@ useEffect(() => {
   {activePage === "analytics" && (
   <div className="analytics-page-wrapper">
       <div className="analytics-content-wrapper">
+        {(analyticsError || behaviorError) && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-amber-900">
+            <p className="font-semibold">Some analytics could not be loaded.</p>
+            {analyticsError && <p className="text-sm mt-1">{analyticsError}</p>}
+            {behaviorError && (
+              <p className="text-sm mt-1">Behavior analysis: {behaviorError}</p>
+            )}
+          </div>
+        )}
         <Analytics
           profile={profile}
           trackingRecords={trackingRecords}
@@ -2041,6 +2066,16 @@ useEffect(() => {
           </button>
         </div>
       </div>
+
+      {(analyticsError || behaviorError) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-amber-900">
+          <p className="font-semibold">Some analytics could not be loaded.</p>
+          {analyticsError && <p className="text-sm mt-1">{analyticsError}</p>}
+          {behaviorError && (
+            <p className="text-sm mt-1">Behavior analysis: {behaviorError}</p>
+          )}
+        </div>
+      )}
 
       {/* Loading State */}
       {interpretationLoading && (
